@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site (only the files the app needs)
+        run: |
+          set -euo pipefail
+          mkdir _site
+          cp index.html sw.js manifest.webmanifest _site/
+          cp -r icons audio _site/
+          test -f _site/audio/manifest.json || { echo "::error::audio/manifest.json fehlt: der Service Worker würde sich nicht installieren"; exit 1; }
+
+          # Cache-Versionen automatisch setzen
+          APP_VER="np-${GITHUB_SHA::7}"
+          AUDIO_VER="np-audio-$(find _site/audio -type f | LC_ALL=C sort | xargs sha1sum | sha1sum | cut -c1-8)"
+          sed -i -E "s/^const VERSION = '[^']*';/const VERSION = '${APP_VER}';/" _site/sw.js
+          sed -i -E "s/^const AUDIO = '[^']*';/const AUDIO = '${AUDIO_VER}';/" _site/sw.js
+          grep -q "'${APP_VER}'" _site/sw.js
+          grep -q "'${AUDIO_VER}'" _site/sw.js
+          echo "VERSION=${APP_VER}  AUDIO=${AUDIO_VER}"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
