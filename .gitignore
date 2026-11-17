@@ -1,1 +1,10 @@
-konzept-lern-app-v2.md
+__pycache__/
+*.pyc
+# built by build.py (the deploy workflow builds it on every push)
+index.html
+# generated from contributions/ by tools/merge_contributions.py (build.py and the deploy workflow run it)
+audio/luo/*
+audio/en/*
+!audio/luo/.keep
+!audio/en/.keep
+audio/manifest.json

@@ -23,6 +23,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Merge helper contributions and build the app
+        run: |
+          set -euo pipefail
+          pip install --quiet fonttools
+          python3 build.py
+          cat review/community-report.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Assemble site (only the files the app needs)
         run: |
           set -euo pipefail
