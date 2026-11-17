@@ -54,7 +54,7 @@ function writer(box, ex, done) {
   const pad = 16, lw = free ? Math.max(L.w + 60, 170) : L.w + 2 * pad;
   const x0 = free ? -(lw - L.w) / 2 : -pad, y0 = -16, lh = 182;
   const st = ex.st = ex.st || {cur: 0, ink: [], done: [], miss: 0, fails: 0, ok: false, overlay: false};
-  const maxW = Math.min(box.clientWidth || 360, 640), maxH = Math.min(window.innerHeight * .44, 380);
+  const maxW = Math.min(box.clientWidth || 360, 640), maxH = Math.min(window.innerHeight * (ex.small ? .3 : .44), 380);
   const sc = Math.min(maxW / lw, maxH / lh), dpr = window.devicePixelRatio || 1;
   const cv = document.createElement('canvas'); cv.className = 'wcv'; cv.width = Math.round(lw * sc * dpr); cv.height = Math.round(lh * sc * dpr);
   cv.style.width = Math.round(lw * sc) + 'px'; cv.style.height = Math.round(lh * sc) + 'px'; box.innerHTML = ''; box.appendChild(cv);
@@ -179,7 +179,7 @@ function letterSession(u) {
   const l = u.l, known = u.known, q = [], vow = known.filter(isV), cons = known.filter(k => !isV(k));
   q.push({t: 'lintro', l, u});
   firstSound(l, 2).forEach(e => q.push(e));
-  q.push(W(l, 1)); q.push(W(l, 1, {noDemo: true}));
+  q.push(W(l, 1, {noDemo: true}));
   q.push(findEx(l, known));
   q.push(W(l, 2));
   if (!isV(l) && vow.length) q.push({t: 'blend', c: l, vs: vow});
@@ -245,7 +245,7 @@ function fluencySession(u) {
 }
 function engLetterSession(u) {
   const q = [], its = u.letters.map(c => I('abc_' + c));
-  its.forEach(it => { q.push({t: 'eintro', it}); q.push(W(it.letter, 1)); q.push(W(it.letter, 2, {noDemo: true})); q.push(W(it.letter.toUpperCase(), 1)); });
+  its.forEach(it => { q.push({t: 'eintro', it}); q.push(W(it.letter, 2, {noDemo: true})); q.push(W(it.letter.toUpperCase(), 2, {noDemo: true})); });
   its.forEach(it => q.push(findEx(it.letter, 'abcdefghijklmnopqrstuvwxyz'.split(''))));
   shuffle(its).forEach(it => q.push(pk(it, 'a>l', KIND.abc)));
   shuffle(its).forEach(it => q.push(pk(it, 'p>t', KIND.abc)));
@@ -271,6 +271,7 @@ function swSession(u) {
 }
 
 /* ---------- new exercise screens ---------- */
+function introDone() { const b = document.querySelector('#exb .go'); if (b) b.classList.add('pulse'); }
 Object.assign(EX, {
   write(ex, el) {
     const label = ex.shape ? `<div class="pic md">${SHAPES[ex.shape].e}</div>` : `<div class="wlab">${H(ex.text, ex.text.length > 4 ? 'md' : 'lg')}${ex.it ? ' ' + picH(ex.it, 'sm') : ''}</div>`;
@@ -289,7 +290,7 @@ Object.assign(EX, {
       ${kw ? `<button class="keyw" onclick="spk++;sayLuo(I('${kw.id}'))">${esc(kw.pic)} <span class="hand">${hiFirst(luoOf(kw), l)}</span></button>` : ''}
       <div class="syls">${[l].concat(syl).map(s => `<button class="syl" onclick="X.syl('${slug(s)}')">${H(s)}</button>`).join('')}</div>
       ${l.length > 1 ? `<div class="note c">${H(l.split('').join(' + '))} → ${H(l)}</div>` : ''}${canSyl() ? '' : '<div class="novoice">🎙️ ?</div>'}</div>${nextBtn('exDone(true,false)')}`;
-    WR = writer(el.querySelector('.wbox'), {text: l, lvl: 0, st: null}, () => {});
+    ex.wst = ex.wst || {}; WR = writer(el.querySelector('.wbox'), Object.assign(ex.wst, {text: l, lvl: 1, small: true}), introDone);
     if (kw) setTimeout(() => { if (cur() === ex && view === 'ses') { ++spk; sayLuo(kw); } }, 1800);
     if (canLuo(lsound(l))) { ++spk; sayLuo(lsound(l)); }
   },
@@ -297,7 +298,8 @@ Object.assign(EX, {
     const it = ex.it;
     el.innerHTML = `<div class="card"><div class="erow"><div class="wbox half"></div><div class="wbox half"></div></div>
       <button class="keyw" onclick="X.elSay()">${esc(it.pic)} <span class="hand">${hiFirst(it.en, it.letter)}</span> 🔊</button></div>${nextBtn('exDone(true,false)')}`;
-    const b = el.querySelectorAll('.wbox'); writer(b[0], {text: it.letter.toUpperCase(), lvl: 0}, () => {}); WR = writer(b[1], {text: it.letter, lvl: 0}, () => {});
+    const b = el.querySelectorAll('.wbox'); ex.w1 = ex.w1 || {}; ex.w2 = ex.w2 || {};
+    writer(b[0], Object.assign(ex.w1, {text: it.letter.toUpperCase(), lvl: 1, small: true, noDemo: true}), () => {}); WR = writer(b[1], Object.assign(ex.w2, {text: it.letter, lvl: 1, small: true}), introDone);
     X.elSay();
   },
   ch(ex, el) {
