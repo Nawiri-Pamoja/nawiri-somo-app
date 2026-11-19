@@ -100,7 +100,7 @@ const WORD_BLOCKS = [
 ~🐦|nest|od winyo`,
 
 `bod|🧍|Body|Del
-🙂|head|wich
+🧑|head|wich
 👁️|eye|wang'
 👂|ear|it
 👃|nose|um
@@ -126,45 +126,45 @@ const WORD_BLOCKS = [
 🧍|body|del
 💅|fingernail|kogno
 🧔|beard|yie tik
-~🙂|face|lela wang'?
-~🙂|chin|tik
+~🧑|face|lela wang'?
+~🧑|chin|tik
 ~🗣️|voice|duol
 😢|tear|pi wang'
 ~🧠|brain|obwongo`,
 
 `fam|👪|People|Ji
-👩|mother|mama
-👨|father|baba
+🤱|mother|mama
+🧔|father|baba
 🧒|child|nyathi
 👶|baby|nyathi matin
 👵|grandmother|dayo
 👴|grandfather|kwaro
 👦|boy|wuoyi
 👧|girl|nyako
-🤵|man|dichwo
-👰|woman|dhako
-🤝|friend|osiep
+👨|man|dichwo
+👩|woman|dhako
+🧑‍🤝‍🧑|friend|osiep
 👬|brother|owadwa
 👭|sister|nyaminwa
-~🧑‍🏫|teacher|japuonj
+~👩‍🏫|teacher|japuonj
 ~🧑‍🎓|pupil|japuonjre
-~👨‍⚕️|doctor|jathieth
-~👨‍🌾|farmer|japur
+~👩‍⚕️|doctor|jathieth
+~👩‍🌾|farmer|japur
 ~🎣|fisherman|jalupo
 ~👨‍🍳|cook|jatedo
-👮|police officer|polis
+👮‍♀️|police officer|polis
 👑|chief|ruoth
 ~👴|elder|jaduong'
 👥|people|ji
-~🧑|person|dhano
+~🧑‍🦱|person|dhano
 ~👪|family|joot
 ~👶|children|nyithindo
-~👨|uncle|nera
-~👩|aunt|waya
+~👨‍🍼|uncle|nera
+~👩‍🦰|aunt|waya
 ~🏘️|neighbour|jirani?
-~🚶|visitor|wendo
-~👯|twins|rude
-~👪|parent|janyuol
+~🧑‍🦰|visitor|wendo
+~👫|twins|rude
+~🧑‍🍼|parent|janyuol
 ~🚗|driver|jariembo
 ~🛒|trader|jaohala
 ~⛪|pastor|jayalo
@@ -362,11 +362,11 @@ const WORD_BLOCKS = [
 `verb|🏃|Actions|Timo
 🍽️|to eat|chiemo
 🥤|to drink|metho
-😴|to sleep|nindo
+🛌|to sleep|nindo
 🏃|to run|ringo
 🚶|to walk|wuotho
 ~⚽|to play|tugo
-🎤|to sing|wer
+🧑‍🎤|to sing|wer
 📖|to read|somo
 ✏️|to write|ndiko
 ~🔢|to count|kwano
@@ -382,7 +382,7 @@ const WORD_BLOCKS = [
 ~✊|to take|kawo
 ~📦|to bring|kelo
 🧼|to wash|luoko
-🛁|to bathe|luokore?
+🛀|to bathe|luokore?
 🍳|to cook|tedo
 ~⛏️|to dig|puro
 🛒|to buy|nyiewo

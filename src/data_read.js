@@ -52,7 +52,7 @@ const PATH_SPEC = {
 A:['L|Animals|Le|🐕|ani_dog,ani_cow,ani_goat,ani_chicken,ani_cat,ani_fish',
    'L|Food|Chiemo|🥛|food_water,food_milk,food_egg,food_maize,food_banana,food_bread',
    'L|My body|Denda|👁️|bod_head,bod_eye,bod_ear,bod_nose,bod_mouth,bod_hand',
-   'L|My family|Joodwa|👩|fam_mother,fam_father,fam_child,fam_baby,fam_grandmother,fam_grandfather',
+   'L|My family|Joodwa|🤱|fam_mother,fam_father,fam_child,fam_baby,fam_grandmother,fam_grandfather',
    'L|More animals|Le moko|🦁|ani_bird,ani_snake,ani_lion,ani_elephant,ani_hippo,ani_monkey',
    'L|Sky and earth|Polo gi piny|☀️|nat_sun,nat_moon,nat_star,nat_rain,nat_fire,nat_tree',
    'L|At home|E dala|🏠|home_house,home_door,home_bed,home_chair,home_cup,home_spoon',
@@ -71,7 +71,7 @@ D:['P|class|0|10','W|ani|8|16','P|class|10|20','W|food|8|16','P|class|20|30','D|
    'W|home|8|16','PAT|have','P|play|0|8','P|play|8|16','D|d_play','D|d_what','W|nat|8|16','W|verb|16|24','W|verb|24|32','P|intro|8|16','P|polite|8|16',
    'P|feel|0|8','P|feel|8|16','PAT|where','P|ask|0|10','P|ask|10|20','D|d_school'],
 E:['W|gram|0|10','DO','S|s1','W|adj|0|10','S|s2','PL|0|14','PL|14|28','W|gram|10|20','S|s3','W|verb|32|40','W|verb|40|48','W|gram|20|30','S|s4','W|adj|10|20','ST|st_goat',
-   'W|gram|30|40','S|s5','W|adj|20|30','W|verb|48|56','S|s6','W|gram|40|52','W|adj|30|40','PAT|like','S|s7','ST|st_water'],
+   'W|gram|30|40','S|s5','W|adj|20|30','W|verb|48|56','S|s6','W|gram|40|52','W|adj|30|40','PAT|like','S|s7','ST|st_water','ST|st_friends'],
 F:['W|num|10|20','W|num|20|34','W|time|0|8','W|time|8|15','W|time|15|25','W|time|25|37','W|math|0|10','W|math|10|20','W|sch|8|17','W|sch|17|26','ST|st_hare',
    'W|place|0|9','W|place|9|17','W|go|0|13','P|market|0|14','D|d_market','ST|st_market','W|hea|0|11','W|hea|11|21','P|help|0|16','D|d_sick','W|clo|8|16','ST|st_rain','ST|st_ball'],
 G:['W|tech|0|8','W|tech|8|16','T|tech|0|8','W|tech|16|24','W|tech|24|32','T|tech|8|24','W|tech|32|41','P|cyber|0|12','D|d_cyber','T|tech|24|41','ST|st_cyber']

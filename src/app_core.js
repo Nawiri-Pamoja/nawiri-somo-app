@@ -8,11 +8,27 @@ function art(n) { return (/^[aeiou]/i.test(n) ? 'an ' : 'a ') + n; }
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 const dayN = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 6e4) / 864e5); };
 
+/* ---------- skin tone: people and hands are shown with the darkest skin tone (Helpers → Settings can switch it off) ---------- */
+const TONE_ON = (() => { try { const v = JSON.parse(localStorage.getItem('np2')); return !(v && v.set && v.set.tone === false); } catch (e) { return true; } })();
+const MOD_BASE = /[\u261D\u26F9\u270A-\u270D\u{1F385}\u{1F3C2}-\u{1F3C4}\u{1F3C7}\u{1F3CA}-\u{1F3CC}\u{1F442}\u{1F443}\u{1F446}-\u{1F450}\u{1F466}-\u{1F469}\u{1F46B}-\u{1F46E}\u{1F470}-\u{1F478}\u{1F47C}\u{1F481}-\u{1F483}\u{1F485}-\u{1F487}\u{1F48F}\u{1F491}\u{1F4AA}\u{1F574}\u{1F575}\u{1F57A}\u{1F590}\u{1F595}\u{1F596}\u{1F645}-\u{1F647}\u{1F64B}-\u{1F64F}\u{1F6A3}\u{1F6B4}-\u{1F6B6}\u{1F6C0}\u{1F6CC}\u{1F90C}\u{1F90F}\u{1F918}-\u{1F91C}\u{1F91E}\u{1F91F}\u{1F926}\u{1F930}-\u{1F939}\u{1F93D}\u{1F93E}\u{1F977}\u{1F9B5}\u{1F9B6}\u{1F9B8}\u{1F9B9}\u{1F9BB}\u{1F9CD}-\u{1F9CF}\u{1F9D1}-\u{1F9DD}\u{1FAC3}-\u{1FAC5}\u{1FAF0}-\u{1FAF8}]/u;
+function tone(str) {
+  if (!TONE_ON || !str) return str;
+  const cps = [...str], runs = []; let run = [];
+  cps.forEach((c, i) => { run.push(i); if (c !== '\u200D' && cps[i + 1] !== '\u200D' && !(cps[i + 1] || '').match(/[\uFE0F\u{1F3FB}-\u{1F3FF}\u2640\u2642]/u)) { runs.push(run); run = []; } });
+  if (run.length) runs.push(run);
+  let out = '';
+  runs.forEach(r => { const bases = r.filter(i => MOD_BASE.test(cps[i])).length;
+    r.forEach((i, k) => { const c = cps[i]; if (c === '\uFE0F' && k > 0 && MOD_BASE.test(cps[r[k - 1]]) && bases <= 2) return; out += c;
+      if (bases <= 2 && MOD_BASE.test(c) && !/[\u{1F3FB}-\u{1F3FF}]/u.test(cps[i + 1] || '')) out += '\u{1F3FF}'; }); });
+  return out;
+}
+
+STAGES.forEach(st => st.e = tone(st.e));
 /* ---------- content index ---------- */
 const ITEMS = {}, TOPICS = {}, KIND = {w: [], p: [], s: [], syl: [], abc: []};
 function addItem(o) {
   if (ITEMS[o.id]) o.id += '-2';
-  o.pic = o.pic || '💬'; o.picOk = !!o.picOk; o.luo = o.luo || ''; ITEMS[o.id] = o; (KIND[o.kind] || (KIND[o.kind] = [])).push(o); return o;
+  o.pic = tone(o.pic || '💬'); o.picOk = !!o.picOk; o.luo = o.luo || ''; ITEMS[o.id] = o; (KIND[o.kind] || (KIND[o.kind] = [])).push(o); return o;
 }
 function unsure(s, sentence) {            // returns [text, sure]
   s = (s || '').trim();
@@ -21,7 +37,7 @@ function unsure(s, sentence) {            // returns [text, sure]
 }
 function loadBlocks(blocks, kind) {
   blocks.forEach(b => {
-    const lines = b.split('\n'), h = lines[0].split('|'), t = TOPICS[h[0]] = {code: h[0], e: h[1], en: h[2], luo: h[3], kind, ids: []};
+    const lines = b.split('\n'), h = lines[0].split('|'), t = TOPICS[h[0]] = {code: h[0], e: tone(h[1]), en: h[2], luo: h[3], kind, ids: []};
     lines.slice(1).forEach(l => {
       const f = l.split('|'); let pic, en, luo;
       if (kind === 'w') { pic = f[0]; en = f[1]; luo = f[2]; } else { pic = '~' + t.e; en = f[0]; luo = f[1]; }
@@ -170,7 +186,7 @@ const PATH = [];
 (function buildPath() {
   const used = new Set(), cnt = {};
   const title = (t, k) => ({en: t.en + (k > 1 ? ' ' + k : ''), luo: t.luo + (k > 1 ? ' ' + k : '')});
-  const push = u => { u.idx = PATH.length; PATH.push(u); return u; };
+  const push = u => { u.e = tone(u.e); u.idx = PATH.length; PATH.push(u); return u; };
   STAGES.concat([{id: 'H', e: '🌟', en: 'Treasure of words', luo: 'Weche mang\'eny', sub: 'many more words'}]).forEach(st => {
     (PATH_SPEC[st.id] || []).forEach(tok => {
       const f = tok.split('|'), k = f[0];
@@ -217,7 +233,7 @@ function touchDay(p) { const d = dayN(); if (p.last !== d) { p.streak = p.last =
 function badges(p) {
   const done = Object.keys(p.stars).length, m = mastered(p), stDone = id => { const us = PATH.filter(u => u.stage === id); return us.length && us.every(u => p.stars[u.id]); };
   return [['⭐', 'First lesson', done >= 1], ['🎒', '10 lessons', done >= 10], ['🏅', '50 lessons', done >= 50], ['🏆', '100 lessons', done >= 100],
-    ['🔥', '3 days in a row', (p.best || 0) >= 3], ['☄️', '7 days in a row', (p.best || 0) >= 7], ['🌞', '30 days in a row', (p.best || 0) >= 30],
+    ['🔥', '3 days in a row', (p.best || 0) >= 3], ['☄️', '7 days in a row', (p.best || 0) >= 7], ['🌈', '30 days in a row', (p.best || 0) >= 30],
     ['📗', '50 words', m >= 50], ['📘', '200 words', m >= 200], ['📚', '500 words', m >= 500], ['🎙️', 'I used my voice', (p.said || 0) >= 5], ['🤝', 'Played together', (p.duels || 0) >= 1]]
     .concat(stagesFor(p).map(s => [s.e, s.en + ' finished', stDone(s.id)]));
 }

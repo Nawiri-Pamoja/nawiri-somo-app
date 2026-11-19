@@ -109,7 +109,7 @@ const HINT = {meet: '👀 👂', pick: '👆', arr: '🧩', match: '🔗', say: 
 function sesView(app) {
   const ex = ses.q[ses.i];
   app.innerHTML = `<div class="sx"><div class="sxtop"><button class="x" onclick="quitSession()" aria-label="Stop">✕</button>
-    <div class="bar"><i style="width:${Math.round(100 * ses.i / ses.q.length)}%"></i></div><span class="hint">${HINT[ex.t] || ''}</span></div>
+    <div class="bar"><i style="width:${Math.round(100 * ses.i / ses.q.length)}%"></i></div><span class="hint">${tone(HINT[ex.t] || '')}</span></div>
     <div id="exb" class="exb"></div></div>`;
   EX[ex.t](ex, $('exb'));
 }

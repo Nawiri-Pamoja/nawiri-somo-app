@@ -340,11 +340,11 @@ const PLURALS = `🐕|dog|dogs|guok|guogi
 🦵|foot|feet|tielo|tiende
 👧|girl|girls|nyako|nyiri
 👦|boy|boys|wuoyi|yawuoyi
-👰|woman|women|dhako|mon
-🤵|man|men|dichwo|chwo
+👩|woman|women|dhako|mon
+👨|man|men|dichwo|chwo
 ~🧑|person|people|dhano|ji
 ~🧑‍🏫|teacher|teachers|japuonj|jopuonj
-🤝|friend|friends|osiep|osiepe
+🧑‍🤝‍🧑|friend|friends|osiep|osiepe
 🥚|egg|eggs|tong'|tonge
 🐍|snake|snakes|thuol|thuonde?
 👂|ear|ears|it|ite
@@ -492,6 +492,17 @@ Everyone is happy and sings.|Ji duto mor kendo giwer.
 We play together. We win together.|Watugo kaachiel. Waloyo kaachiel.
 ?Where do they play?|at school|at the lake|at the market
 ?Who runs very fast?|Atieno|Ochieng'|the teacher`},
+{id:'st_friends', e:'🧑‍🤝‍🧑', t:'Two friends', l:'Osiepe ariyo', text:`Atieno and Akinyi are friends.|Atieno gi Akinyi gin osiepe.
+They live in the same village.|Gidak e gweng' achiel.
+Every day they walk to school together.|Pile giwuotho kaachiel kadhi skul.?
+At school they sit at one desk.|E skul gibedo e des achiel.?
+Atieno has a mango. Akinyi has groundnuts.|Atieno nigi maembe. Akinyi nigi njugu.?
+They share their food.|Gipogo chiembgi.?
+In the evening they fetch water together and sing.|Odhiambo gituomo pi kaachiel kendo giwer.
+Akinyi says: You are my best friend.|Akinyi wacho: In osiepna maber moloyo.?
+Atieno says: I will always be with you.|Atieno wacho: Abiro bedo kodi pile.?
+?What do they share?|their food|their books|their shoes
+?Where do they sit at school?|at one desk|under a tree|at the door`},
 {id:'st_cyber', e:'💻', t:'The first day at the computer', l:'Chieng\' mokwongo e kompyuta', text:`Awino goes to the internet café.|Awino dhi e saiba.?
 She sits in front of a computer.|Obet e nyim kompyuta.
 She wants to learn about fish in the lake.|Odwaro puonjore kuom rech manie nam.
