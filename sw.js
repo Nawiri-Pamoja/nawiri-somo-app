@@ -12,15 +12,16 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const app = await caches.open(VERSION);
     await app.addAll(SHELL);
-    // Download all hosted voice files now, so they work offline. Only files missing
-    // from the audio cache are fetched; a failed file never blocks the installation.
+    // Download all hosted voice files now, so they work offline. Only new or changed files
+    // are fetched; a failed file never blocks the installation.
     try {
       const m = await (await fetch('audio/manifest.json', {cache: 'no-store'})).json();
       const urls = [];
-      for (const l of ['luo', 'en']) for (const [id, ext] of Object.entries(m[l] || {})) urls.push('audio/' + l + '/' + id + '.' + ext);
+      for (const l of ['luo', 'en']) for (const [id, val] of Object.entries(m[l] || {})) { const [ext, v] = String(val).split(':'); urls.push('audio/' + l + '/' + id + '.' + ext + (v ? '?v=' + v : '')); }
       const ac = await caches.open(AUDIO);
       for (let i = 0; i < urls.length; i += 8) {
-        await Promise.all(urls.slice(i, i + 8).map(async u => { try { if (!(await ac.match(u))) await ac.add(u); } catch (err) {} }));
+        // unchanged files (same fingerprint) are copied from the previous cache instead of downloaded again
+        await Promise.all(urls.slice(i, i + 8).map(async u => { try { if (await ac.match(u)) return; const old = await caches.match(u); if (old) await ac.put(u, old); else await ac.add(u); } catch (err) {} }));
       }
     } catch (err) {}
     await self.skipWaiting();

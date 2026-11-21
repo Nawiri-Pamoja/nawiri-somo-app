@@ -8,15 +8,38 @@
            audio/luo/, audio/en/, audio/manifest.json   the recordings, served with the app
            review/community-report.md          what came in, by whom, and where helpers disagree
 
+   Recordings are polished if ffmpeg is installed: silence at start and end cut off, all at the same loudness,
+   saved as small .m4a files (cached in .cache/audio, so later builds are fast). NP_NO_POLISH=1 switches this off.
    Rules: for the same entry the newest correction wins; disagreements are listed in the report.
    build.py runs this automatically. Usage on its own: python3 tools/merge_contributions.py"""
-import base64, glob, json, os, re, sys
+import base64, glob, hashlib, json, os, re, shutil, subprocess, sys, tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IDRE = re.compile(r'^[a-z0-9_-]{1,80}$')
 EXT = {'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav'}
 MAX_AUDIO = 3_000_000          # base64 characters per recording (about 2 MB)
+FFMPEG = None if os.environ.get('NP_NO_POLISH') else shutil.which('ffmpeg')
+TRIM = ('silenceremove=start_periods=1:start_duration=0.04:start_threshold=-40dB,areverse,'
+        'silenceremove=start_periods=1:start_duration=0.04:start_threshold=-40dB,areverse')
+
+def polish(raw, ext, cache):
+    """Cut silence, even out loudness, mono AAC. Falls back to the original if anything goes wrong."""
+    if not FFMPEG: return raw, ext
+    key = hashlib.sha1(raw).hexdigest(); hit = os.path.join(cache, key + '.m4a')
+    if os.path.exists(hit): return open(hit, 'rb').read(), 'm4a'
+    run = lambda *a: subprocess.run([FFMPEG, '-hide_banner', '-nostats'] + list(a), capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as t:
+        src, mid, dst = os.path.join(t, 'in.' + ext), os.path.join(t, 'mid.wav'), os.path.join(t, 'out.m4a'); open(src, 'wb').write(raw)
+        if run('-y', '-i', src, '-af', 'highpass=f=70', '-ac', '1', '-ar', '24000', mid).returncode or not os.path.exists(mid): return raw, ext
+        peak = re.search(r'max_volume:\s*(-?[\d.]+)', run('-i', mid, '-af', 'volumedetect', '-f', 'null', '-').stderr)
+        gain = min(30.0, -3.0 - float(peak.group(1))) if peak else 0.0              # loudest part at -3 dB: all clips sound equally loud
+        af = 'volume=%.1fdB,%s,alimiter=limit=0.89:level=false,adelay=120:all=1,apad=pad_dur=0.15' % (gain, TRIM)
+        if run('-y', '-i', mid, '-af', af, '-c:a', 'aac', '-b:a', '48k', '-movflags', '+faststart', dst).returncode or not os.path.exists(dst) or os.path.getsize(dst) < 800: return raw, ext
+        data = open(dst, 'rb').read()
+    os.makedirs(cache, exist_ok=True); open(hit, 'wb').write(data)
+    return data, 'm4a'
 
 def txt(v, n): return str(v or '').strip()[:n]
 def ms(iso):
@@ -62,17 +85,21 @@ def main(root=ROOT, quiet=False):
         d = os.path.join(root, 'audio', lang); os.makedirs(d, exist_ok=True)
         for f in os.listdir(d):
             if f != '.keep': os.remove(os.path.join(d, f))
+    jobs = []
     for a in audio.values():
-        try: raw = base64.b64decode(a['data'], validate=True)
-        except Exception: skipped.append('recording %s|%s (damaged)' % (a['id'], a['lang'])); continue
-        open(os.path.join(root, 'audio', a['lang'], a['id'] + '.' + a['ext']), 'wb').write(raw)
-        manifest[a['lang']][a['id']] = a['ext']
-    for lang in ('luo', 'en'):                   # recordings made outside the app
+        try: jobs.append((a['lang'], a['id'], base64.b64decode(a['data'], validate=True), a['ext']))
+        except Exception: skipped.append('recording %s|%s (damaged)' % (a['id'], a['lang']))
+    for lang in ('luo', 'en'):                   # recordings made outside the app win over app recordings
         for f in sorted(glob.glob(os.path.join(cdir, 'audio', lang, '*'))):
             base, ext = os.path.splitext(os.path.basename(f)); ext = ext.lstrip('.').lower()
             if IDRE.match(base) and ext in ('webm', 'm4a', 'ogg', 'mp3', 'wav'):
-                for old in glob.glob(os.path.join(root, 'audio', lang, base + '.*')): os.remove(old)
-                open(os.path.join(root, 'audio', lang, base + '.' + ext), 'wb').write(open(f, 'rb').read()); manifest[lang][base] = ext
+                jobs = [j for j in jobs if not (j[0] == lang and j[1] == base)] + [(lang, base, open(f, 'rb').read(), ext)]
+    cache = os.path.join(root, '.cache', 'audio')
+    with ThreadPoolExecutor(max_workers=os.cpu_count() or 2) as pool:
+        done = list(pool.map(lambda j: (j[0], j[1]) + polish(j[2], j[3], cache), jobs))
+    for lang, id_, data, ext in done:
+        open(os.path.join(root, 'audio', lang, id_ + '.' + ext), 'wb').write(data)
+        manifest[lang][id_] = ext + ':' + hashlib.sha1(data).hexdigest()[:8]    # fingerprint: tablets fetch a file again only when it changed
     for lang in manifest: manifest[lang] = dict(sorted(manifest[lang].items()))
     open(os.path.join(root, 'audio', 'manifest.json'), 'w').write(json.dumps(manifest, indent=1) + '\n')
     # the data file read by the app
@@ -106,7 +133,7 @@ def main(root=ROOT, quiet=False):
     if skipped: rep += ['## Skipped', ''] + ['- ' + s for s in skipped] + ['']
     os.makedirs(os.path.join(root, 'review'), exist_ok=True)
     open(os.path.join(root, 'review', 'community-report.md'), 'w', encoding='utf-8').write('\n'.join(rep))
-    say('contributions: %d files, %d entries, %d words, %d recordings, %d people, %d disagreements' % (len(files), len(E), len(A), len(manifest['luo']) + len(manifest['en']), len(names), len(conf)))
+    say('contributions: %d files, %d entries, %d words, %d recordings (%s), %d people, %d disagreements' % (len(files), len(E), len(A), len(manifest['luo']) + len(manifest['en']), 'polished' if FFMPEG else 'not polished: no ffmpeg', len(names), len(conf)))
 
 if __name__ == '__main__':
     main()

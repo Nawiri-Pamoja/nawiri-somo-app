@@ -51,6 +51,10 @@ loadBlocks(WORD_BLOCKS, 'w'); loadBlocks(PHRASE_BLOCKS, 'p'); loadBlocks(SENT_BL
 const PL = PLURALS.split('\n').map(l => { const f = l.split('|'), ok = f[0][0] !== '~', p = ok ? f[0] : f[0].slice(1), [lt, sure] = unsure(f[4]);
   return addItem({id: 'pl_' + slug(f[2]) + (f[1] === f[2] ? '-many' : ''), kind: 'w', topic: 'pl', pic: p + p, picOk: ok, en: f[1] === f[2] ? 'many ' + f[2] : f[2], luo: lt, sure}).id; });
 TOPICS.pl = {code: 'pl', e: '👥', en: 'One and many', luo: 'Achiel gi mang\'eny', kind: 'w', ids: PL};
+const BOOKS = BOOK_BLOCKS.map(b => { const L = b.split('\n'), h = L[0].split('|'), bk = {id: h[0], e: h[1], luo: h[2], en: h[3], ids: []};
+  L.slice(1).forEach((l, i) => { const f = l.split('|'), [lt, sure] = unsure(f[0], true);
+    bk.ids.push(addItem({id: 'bk_' + bk.id + '_' + i, kind: 's', topic: 'bk_' + bk.id, pic: f[2], picOk: true, en: f[1], luo: lt, sure}).id); });
+  TOPICS['bk_' + bk.id] = {code: 'bk_' + bk.id, e: bk.e, en: bk.en, luo: bk.luo, kind: 'bk', ids: bk.ids}; return bk; });
 DIALOGS.forEach(d => { d.ids = d.lines.split('\n').map((l, i) => { const f = l.split('|'), [lt, sure] = unsure(f[2], true);
   return addItem({id: d.id + '_' + i, kind: 's', topic: d.id, pic: d.e, en: f[1], luo: lt, sure, who: f[0]}).id; }); });
 STORIES.forEach(st => { st.ids = []; st.qs = []; st.text.split('\n').forEach((l, i) => { const f = l.split('|');
@@ -59,6 +63,8 @@ STORIES.forEach(st => { st.ids = []; st.qs = []; st.text.split('\n').forEach((l,
 /* corrections from native speakers, merged into the build by tools/merge_contributions.py (src/data_community.js) */
 Object.keys(COMMUNITY.edits || {}).forEach(id => { const it = ITEMS[id], e = COMMUNITY.edits[id]; if (!it || !e || !e.luo) return;
   it.luo = e.luo; it.sure = true; it.chk = e.status === 'corrected' ? 'corrected' : 'confirmed'; it.note = e.note || ''; });
+LIT_SEQ.forEach(l => addItem({id: 'lt_' + slug(l.replace("'", 'x')), kind: 'lt', topic: 'lt', pic: l, en: '', luo: l, sure: true}));
+const ltId = l => 'lt_' + slug(l.replace("'", 'x'));
 VOWELS.forEach(v => addItem({id: 'syl_' + v, kind: 'syl', topic: 'syl', pic: v, en: '', luo: v, sure: true}));
 LIT_SEQ.filter(c => !VOWELS.includes(c)).forEach(c => VOWELS.forEach(v => addItem({id: 'syl_' + slug(c + v), kind: 'syl', topic: 'syl', pic: c + v, en: '', luo: c + v, sure: true})));
 ABC.forEach(a => addItem({id: 'abc_' + a[0], kind: 'abc', topic: 'abc', pic: a[1], picOk: true, en: a[2], luo: '', sure: true, letter: a[0]}));
@@ -70,6 +76,18 @@ TOPICS.cvc = {code: 'cvc', e: '🔤', en: 'Short English words', luo: 'Weche mat
 SIGHT.forEach(g => { g.ids = g.words.split('|').map(x => { const [w, l] = x.split(':');
   return addItem({id: 'sw_' + slug(w) + (w === 'I' ? '-me' : ''), kind: 'sw', topic: 'sw', pic: '👁️', en: w, luo: l || '', sure: true}).id; }); });
 const I = id => ITEMS[id];
+/* Everything the app says gets a fixed entry, so helpers can record it (kind 'g' = built sentence, letter, name, question) */
+const GEN = {};
+PATTERNS.forEach(p => { GEN[p.id] = PATTERN_NOUNS.map(I).filter(Boolean).map(n => addItem({id: 'pat_' + p.id + '_' + n.id, kind: 'g', topic: 'gen', pic: n.pic, picOk: false,
+  en: p.en(n.en), luo: n.luo ? p.luo(n.luo) : '', sure: n.sure, noun: n.id}).id); });
+GEN.do = []; DOING.forEach(v => PERSONS.forEach((pe, k) => GEN.do.push(addItem({id: 'do_' + slug(v[0]) + '_' + k, kind: 'g', topic: 'gen', pic: '🏃', picOk: false,
+  en: pe[0] + ' ' + v[0] + '.', luo: cap(pe[1] + v[1]) + '.', sure: true}).id)));
+STORIES.forEach(st => st.qs.forEach((x, i) => { x.say = addItem({id: 'stq_' + st.id + '_' + i, kind: 'g', topic: 'gen', pic: '❓', en: x.q, luo: '', sure: true}).id; }));
+Object.keys(NAMES).forEach(L => addItem({id: 'name_' + L.toLowerCase(), kind: 'g', topic: 'gen', pic: L, en: NAMES[L], luo: '', sure: true}));
+SIGHT.forEach(g => { g.tf = []; g.pat.forEach((pt, k) => [].concat(...CVC.map(c => c.ids)).forEach(n => g.tf.push(addItem({id: 'swt_' + g.id + '_' + k + '_' + n.slice(4), kind: 'g', topic: 'gen',
+  pic: I(n).pic, picOk: false, en: pt.replace('#', I(n).en), luo: '', sure: true, noun: n}).id))); });
+TOPICS.gen = {code: 'gen', e: '🧩', en: 'Built sentences', luo: 'Weche maboyo', kind: 'g', ids: KIND.g.map(it => it.id)};
+
 
 /* ---------- storage ---------- */
 const LS = {
@@ -135,6 +153,7 @@ const DB = { _p: null,
   get(k) { return this.tx('readonly', s => s.get(k)); }, put(k, v) { return this.tx('readwrite', s => s.put(v, k)); },
   del(k) { return this.tx('readwrite', s => s.delete(k)); }, keys() { return this.tx('readonly', s => s.getAllKeys()); }
 };
+const voiceUrl = (lang, id) => { const [ext, v] = String(hosted[lang][id]).split(':'); return 'audio/' + lang + '/' + id + '.' + ext + (v ? '?v=' + v : ''); };
 const hasAudio = (id, l) => haveLocal.has(id + '|' + l) || !!(hosted[l] && hosted[l][id]);
 function stopSound() { spk++; try { if (curAudio) curAudio.pause(); } catch (e) {} try { if (hasTTS()) speechSynthesis.cancel(); } catch (e) {} }
 function playBlob(blob) {
@@ -145,29 +164,38 @@ function playBlob(blob) {
 async function playAudio(id, lang) {
   try { const key = id + '|' + lang; let blob = null;
     if (haveLocal.has(key)) { const r = await DB.get(key); blob = r && r.blob; }
-    if (!blob && hosted[lang] && hosted[lang][id]) { const ext = hosted[lang][id], r = await fetch('audio/' + lang + '/' + id + '.' + ext); if (r.ok) blob = new Blob([await r.blob()], {type: EXT_MIME[ext]}); }
+    if (!blob && hosted[lang] && hosted[lang][id]) { const ext = String(hosted[lang][id]).split(':')[0], r = await fetch(voiceUrl(lang, id)); if (r.ok) blob = new Blob([await r.blob()], {type: EXT_MIME[ext]}); }
     return blob ? await playBlob(blob) : false;
   } catch (e) { return false; }
 }
-const canEn = it => !!it.en && (hasAudio(it.id, 'en') || hasTTS());
+const canEn = it => !!it.en && (hasAudio(it.id, 'en') || (S.set.entts !== false && hasTTS()));
 const canLuo = it => !!luoOf(it) && (hasAudio(it.id, 'luo') || (S.set.sw && !!V.sw));
 const canT = it => dir() === 'en' ? canEn(it) : canLuo(it);
-async function sayEn(it, text) { if (!text && hasAudio(it.id, 'en') && await playAudio(it.id, 'en')) return true; return tts(cleanEn(text || it.en), 'en'); }
+async function sayEn(it, text) { if (it && it.id && hasAudio(it.id, 'en') && await playAudio(it.id, 'en')) return true; if (S.set.entts === false) return false; return tts(cleanEn(text || (it && it.en) || ''), 'en'); }
+const abcText = it => it.letter.toUpperCase() + '. ' + it.en + '.';
+const sayAbc = it => { ++spk; return sayEn(it, abcText(it)); };
 async function sayLuo(it) { if (hasAudio(it.id, 'luo') && await playAudio(it.id, 'luo')) return true; if (S.set.sw && V.sw) return tts(luoOf(it), 'sw'); return false; }
 const sayT = it => { ++spk; return dir() === 'en' ? sayEn(it) : sayLuo(it); };
 async function sayBoth(it) { const k = ++spk; if (canLuo(it)) { await sayLuo(it); if (k !== spk) return; await wait(250); } if (k !== spk) return; await sayEn(it); }
 function toast(m) { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 2600); }
 
 /* ---------- the reading-and-writing course, generated from LIT_SEQ ---------- */
+const LG = s => (String(s).toLowerCase().match(/ng'|ng|ny|ch|dh|th|sh|[a-z]|'/g) || []);
 function litUnits(stage, push) {
   const known = [];
+  const bookLetters = bk => { const g = new Set(); let caps = false; bk.ids.forEach(id => { const t = I(id).luo; if (/[A-Z]/.test(t)) caps = true; LG(t.replace(/[^A-Za-z' ]/g, ' ')).forEach(x => x !== "'" && g.add(x)); }); return {g, caps}; };
+  const placed = new Set(), pushBooks = (k, final) => BOOKS.forEach(bk => { if (placed.has(bk.id)) return; const {g, caps} = bookLetters(bk);
+    if ((final || !caps) && [...g].every(x => k.includes(x))) { placed.add(bk.id); push({id: 'B_bk_' + bk.id, stage, kind: 'BK', book: bk, e: bk.e, en: 'Book: ' + bk.en, luo: 'Buk: ' + bk.luo, ids: bk.ids}); } });
   LIT_SEQ.forEach((l, i) => {
     known.push(l); const kw = I(KEYW[l]);
     push({id: 'B_l_' + slug(l.replace("'", 'x')), stage, kind: 'LT', l, known: known.slice(), e: l, en: 'letter ' + l, luo: l + (kw ? ' · ' + kw.luo : ''), ids: kw ? [kw.id] : []});
     if (i % 3 === 2 || i === LIT_SEQ.length - 1) { const fresh = LIT_SEQ.slice(i - (i % 3), i + 1);
-      push({id: 'B_rv_' + slug(l.replace("'", 'x')), stage, kind: 'LR', known: known.slice(), fresh, e: '🔁', en: 'Read and write', luo: 'Som gi ndik: ' + fresh.join(' '), ids: []}); }
+      push({id: 'B_rv_' + slug(l.replace("'", 'x')), stage, kind: 'LR', known: known.slice(), fresh, e: '🔁', en: 'Read and write', luo: 'Som gi ndik: ' + fresh.join(' '), ids: []});
+      pushBooks(known); }
   });
   CAPS.forEach((g, i) => push({id: 'B_cap' + i, stage, kind: 'CAP', letters: g.split(''), e: g[0], en: 'Capital letters', luo: 'Nyukta madongo: ' + g.split('').join(' '), ids: []}));
+  pushBooks(LIT_SEQ, true);
+  BOOKS.forEach(bk => { if (!placed.has(bk.id)) console.warn('book not readable with the course letters:', bk.id); });
   DIGITS.forEach((g, i) => push({id: 'B_num' + i, stage, kind: 'NUM', digits: g.split(''), e: g[0], en: 'Writing numbers', luo: 'Ndik namba: ' + g.split('').join(' '), ids: []}));
   [1, 2, 3].forEach(n => push({id: 'B_fl' + n, stage, kind: 'FL', known: LIT_SEQ.slice(), e: '📖', en: 'Read sentences', luo: 'Som weche ' + n, ids: []}));
 }
@@ -216,13 +244,16 @@ const PATH = [];
 const ALL_STAGES = STAGES.concat([{id: 'H', e: '🌟', en: 'Treasure of words', luo: 'Weche mang\'eny', sub: 'many more words'}]);
 const stagesFor = p => ALL_STAGES.filter(s => p.dir === 'en' || !['A', 'B', 'B2'].includes(s.id));
 const firstIdx = st => PATH.findIndex(u => u.stage === st);
-function frontier(p) { let f = firstIdx(p.start || 'A'); PATH.forEach(u => { if (p.stars[u.id] && u.idx + 1 > f) f = u.idx + 1; }); return Math.min(f, PATH.length - 1); }
-const unlocked = (p, u) => S.set.openAll || u.idx <= frontier(p) + 1;
+/* Reading and writing (stages B, B2) move on only when a lesson is secure: 2 stars, or 1 star after 3 tries (nobody gets stuck). */
+const gated = u => u.stage === 'B' || u.stage === 'B2';
+const passed = (p, u) => { const s = p.stars[u.id] || 0; return gated(u) ? s >= 2 || (s >= 1 && ((p.tries || {})[u.id] || 0) >= 3) : s >= 1; };
+function frontier(p) { let f = firstIdx(p.start || 'A'); PATH.forEach(u => { if (passed(p, u) && u.idx + 1 > f) f = u.idx + 1; }); return Math.min(f, PATH.length - 1); }
+const unlocked = (p, u) => S.set.openAll || u.idx <= frontier(p) + (gated(u) ? 0 : 1);
 
 /* ---------- progress ---------- */
 const IV = [0, 1, 2, 4, 8, 16, 32];
 function grade(it, ok) {
-  const p = P(); if (!p || !it || !ITEMS[it.id] || it.kind === 'syl') return;
+  const p = P(); if (!p || !it || !ITEMS[it.id] || it.kind === 'syl' || it.kind === 'g') return;
   const r = p.prog[it.id] || {b: 0}; r.b = ok ? Math.min(r.b + 1, 6) : Math.max(r.b - 1, 0); r.d = dayN() + IV[r.b]; p.prog[it.id] = r;
 }
 const dueItems = p => Object.keys(p.prog).filter(id => ITEMS[id] && p.prog[id].d <= dayN()).map(I);

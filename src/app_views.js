@@ -25,7 +25,7 @@ VIEWS.who = app => {
 };
 function pickP(id) { S.cur = id; save(); go('home'); }
 VIEWS.newp = app => {
-  if (ctx.step === 1) { app.innerHTML = `<h2 class="c">👋</h2><div class="avs">${AVS.filter(a => !S.profiles.some(p => p.av === a)).map(a => `<button class="av" onclick="ctx.av='${a}';ctx.step=2;render()"><span>${a}</span></button>`).join('')}</div>
+  if (ctx.step === 1) { app.innerHTML = `<h2 class="c">${tone('👋')}</h2><div class="avs">${AVS.filter(a => !S.profiles.some(p => p.av === a)).map(a => `<button class="av" onclick="ctx.av='${a}';ctx.step=2;render()"><span>${a}</span></button>`).join('')}</div>
     <button class="small-link" onclick="go('who')">‹</button>`; return; }
   app.innerHTML = `<h2 class="c"><span style="font-size:64px">${ctx.av}</span></h2>
     <input id="pname" maxlength="16" placeholder="Nyingi / name (not needed)" value="${esc(ctx.name || '')}" oninput="ctx.name=this.value">
@@ -52,7 +52,8 @@ VIEWS.home = app => {
     <div class="sthead"><h2>${st.e} ${TT(st.en, st.luo)}</h2>
       <div class="day">☀️ ${[0, 1, 2].map(i => `<i class="${td > i ? 'on' : ''}"></i>`).join('')}${due ? `<button class="due" onclick="startReview()">🔁 ${due}</button>` : ''}</div></div>
     <div class="path">${units.map((u, n) => { const open = u.idx < 0 || unlocked(p, u), s = p.stars[u.id] || 0, now = u.idx === fr;
-      return `<button class="node z${n % 4} ${open ? '' : 'lock'} ${s ? 'done' : ''} ${now ? 'now' : ''}" ${open ? `onclick="openUnit('${u.id}')"` : 'disabled'} ${now ? 'id="nownode"' : ''}>
+      const ok = u.idx < 0 ? s > 0 : passed(p, u);
+      return `<button class="node z${n % 4} ${open ? '' : 'lock'} ${ok ? 'done' : s ? 'again' : ''} ${now ? 'now' : ''}" ${open ? `onclick="openUnit('${u.id}')"` : 'disabled'} ${now ? 'id="nownode"' : ''}>
         <span class="ne ${/^[A-Za-z'0-9]+$/.test(u.e) ? 'txt' : ''}">${open ? esc(u.e) : '🔒'}</span><span class="nl">${TT(u.en, u.luo)}</span><span class="ns">${'⭐'.repeat(s)}${'☆'.repeat(3 - s)}</span></button>`; }).join('')}</div>`;
   const n = $('nownode'); if (n && !ctx.stage) setTimeout(() => { try { n.scrollIntoView({block: 'center'}); } catch (e) {} }, 50);
 };
@@ -63,11 +64,13 @@ function openUnit(id) {
 }
 function startReview() { const p = P(), q = reviewSession(p); startSession({id: null, en: 'Review'}, q); }
 VIEWS.res = app => {
-  const r = ses.res, p = P(), pl = plantOf(p.seeds);
+  const r = ses.res, p = P(), pl = plantOf(p.seeds), u = ses.u && ses.u.id && PATH.find(x => x.id === ses.u.id), again = u && gated(u) && !passed(p, u);
+  const redo = `${ses.u && ses.u.id ? `openUnit('${ses.u.id}')` : 'startReview()'}`;
   app.innerHTML = `<div class="card res"><div class="stars">${'⭐'.repeat(r.stars)}<span class="off">${'⭐'.repeat(3 - r.stars)}</span></div>
-    <div class="tt">${dir() === 'en' ? 'Ber ahinya!' : 'Well done!'}</div><div class="gain">+${r.gain} 🌱</div><div class="plant">${pl[1]}</div>
+    <div class="tt">${again ? 'Tem kendo! ' + tone('💪') : dir() === 'en' ? 'Ber ahinya!' : 'Well done!'}</div>${again ? '<div class="nt">Once more – you are getting it!</div>' : ''}<div class="gain">+${r.gain} 🌱</div><div class="plant">${pl[1]}</div>
     <div class="nt">${p.seeds} 🌱 · 🔥 ${p.streak}</div></div>
-    <div class="row2"><button class="go alt" onclick="${ses.u && ses.u.id ? `openUnit('${ses.u.id}')` : 'startReview()'}">↻</button><button class="go" onclick="go('home')">▶</button></div>`;
+    ${again ? `<div class="row2"><button class="go alt" onclick="go('home')">✕</button><button class="go pulse" onclick="${redo}">↻</button></div>`
+      : `<div class="row2"><button class="go alt" onclick="${redo}">↻</button><button class="go" onclick="go('home')">▶</button></div>`}`;
 };
 
 /* ---------- dialogue + story ---------- */
@@ -119,7 +122,7 @@ VIEWS.duel = app => {
   if (!ctx.pool) { ctx.pool = gamePool(); ctx.score = [0, 0]; duelNext(); }
   const it = ctx.it, win = ctx.score.findIndex(s => s >= 5);
   const side = k => `<div class="dside ${k ? 'flip' : ''}"><div class="dsc">${'⭐'.repeat(ctx.score[k])}</div>
-    ${win >= 0 ? `<div class="pic xl">${win === k ? '🏆' : '👏'}</div>` : `<div class="dq">${picH(it, 'md')}<b>${esc(nText(it))}</b></div>
+    ${win >= 0 ? `<div class="pic xl">${win === k ? '🏆' : tone('👏')}</div>` : `<div class="dq">${picH(it, 'md')}<b>${esc(nText(it))}</b></div>
     <div class="opts n4">${ctx.opts.map((o, i) => `<button class="opt ${ctx.lock[k] ? 'dim' : ''} ${ctx.won !== null && o.id === it.id ? 'good' : ''}" onclick="duelTap(${k},${i})">${esc(tText(o))}</button>`).join('')}</div>`}</div>`;
   app.innerHTML = `<div class="duel">${side(1)}<div class="dmid"><button onclick="go('games')">✕</button>${win >= 0 ? `<button onclick="go('duel',{})">↻</button>` : ''}</div>${side(0)}</div>`;
 };
@@ -139,7 +142,7 @@ VIEWS.dict = app => {
   dictList();
 };
 function dictList() {
-  const q = (ctx.q || '').toLowerCase().trim(); let its = ctx.topic ? TOPICS[ctx.topic].ids.map(I) : KIND.w.concat(KIND.p, KIND.s).filter(it => !/^(d_|st_|tr_)/.test(it.id));
+  const q = (ctx.q || '').toLowerCase().trim(); let its = ctx.topic ? TOPICS[ctx.topic].ids.map(I) : KIND.w.concat(KIND.p, KIND.s).filter(it => !/^(d_|st_|tr_|bk_)/.test(it.id));
   if (q) its = its.filter(it => it.en.toLowerCase().includes(q) || luoOf(it).toLowerCase().includes(q));
   const tot = its.length; its = its.slice(0, ctx.topic || q ? 120 : 40);
   $('dl').innerHTML = `<p class="note">${tot} ${tot > its.length ? '· type to search' : ''}</p>` + its.map(it => { const s = statusOf(it);
@@ -170,23 +173,38 @@ VIEWS.helper = app => {
   const all = checkable(), chk = all.filter(it => S.edits[it.id] || it.chk).length, uns = all.filter(it => statusOf(it) === 'unsure').length, rec = all.concat(KIND.syl).filter(it => hasAudio(it.id, 'luo')).length;
   const tg = (k, lab) => `<button class="chip ${S.set[k] ? 'on' : ''}" onclick="S.set.${k}=!S.set.${k};save();render()">${S.set[k] ? '☑' : '☐'} ${lab}</button>`;
   app.innerHTML = `<h2>Helpers</h2>
-   <p class="note">The Dholuo in this app was written without a native speaker. <b>${chk}</b> of ${all.length} entries are checked, <b>${uns}</b> are marked “not sure”. <b>${rec}</b> of ${all.length + KIND.syl.length} have a recorded Dholuo voice.</p>
-   <div class="hl"><button class="btn" onclick="go('check',{})">✓ Check the Dholuo</button><button class="btn" onclick="go('recorder',{})">🎙️ Record Dholuo voices</button>
+   <p class="note">The Dholuo in this app was written without a native speaker. <b>${chk}</b> of ${all.length} entries are checked, <b>${uns}</b> are marked “not sure”. <b>${rec}</b> of ${all.length + KIND.syl.length} have a recorded Dholuo voice, <b>${recPool('path', 'en').filter(it => hasAudio(it.id, 'en')).length}</b> of ${recPool('path', 'en').length} a recorded English voice.</p>
+   <div class="hl"><button class="btn" onclick="go('check',{})">✓ Check the Dholuo</button><button class="btn" onclick="go('recorder',{lang:'luo'})">🎙️ Record Dholuo</button><button class="btn" onclick="go('recorder',{lang:'en'})">🎙️ Record English</button>
    <button class="btn alt" onclick="openAdd()">+ Add our own word</button><button class="btn alt" onclick="go('dict')">📖 Find a word and fix it</button></div>
+   <p class="note" id="offvoices"></p>
    <h3>Your name and agreement</h3>
    <input placeholder="Your name (for the thank-you list)" value="${esc(S.helper.name)}" maxlength="40" oninput="S.helper.name=this.value;save()">
    <button class="chip agree ${S.helper.ok ? 'on' : ''}" onclick="S.helper.ok=!S.helper.ok;save();render()">${S.helper.ok ? '☑' : '☐'} We agree that our corrections, words and voices are published freely in the Nawiri Pamoja app (licence CC BY-SA 4.0), with our names in the thank-you list.</button>
    <h3>Send to Nawiri Pamoja and other tablets</h3>
    <p class="note">One file with everything from this tablet: <b>${Object.keys(S.edits).length}</b> checked or corrected, <b>${S.added.length}</b> own words, <b>${haveLocal.size}</b> recordings. Send it by WhatsApp or e-mail to Nawiri Pamoja, or open it on another tablet with “Import”.</p>
-   <div class="hl"><button class="btn" onclick="exportAll()">📤 Export everything</button><label class="btn alt">📥 Import<input type="file" hidden onchange="importAny(this.files[0])"></label></div>
-   <h3>Settings</h3><div class="chips">${tg('openAll', 'All lessons open')}<button class="chip ${S.set.tone !== false ? 'on' : ''}" onclick="S.set.tone=S.set.tone===false;save();location.reload()">${S.set.tone !== false ? '☑' : '☐'} Dark skin tone for people (switch off if you see squares)</button>${tg('sw', 'Read Dholuo with the Swahili voice until recorded')}</div>
+   <div class="hl"><button class="btn" onclick="exportAll(false)">📤 Export what is new</button><label class="btn alt">📥 Import<input type="file" hidden onchange="importAny(this.files[0])"></label></div>
+   <p class="note">${S.lastExport ? 'Last export: ' + new Date(S.lastExport).toLocaleString() + '. “What is new” sends only what came after it, so files stay small.' : 'The first export sends everything.'}
+   <button class="chip" onclick="exportAll(true)">📦 Export everything again</button></p>
+   <h3>Settings</h3><div class="chips">${tg('openAll', 'All lessons open')}<button class="chip ${S.set.entts !== false ? 'on' : ''}" onclick="S.set.entts=S.set.entts===false;save();render()">${S.set.entts !== false ? '☑' : '☐'} Use the tablet's voice for English that is not recorded yet</button><button class="chip ${S.set.tone !== false ? 'on' : ''}" onclick="S.set.tone=S.set.tone===false;save();location.reload()">${S.set.tone !== false ? '☑' : '☐'} Dark skin tone for people (switch off if you see squares)</button>${tg('sw', 'Read Dholuo with the Swahili voice until recorded')}</div>
    <p class="note">English voice: <b>${V.en ? esc(V.en.name) : hasTTS() ? 'default' : 'none'}</b> · Swahili voice: <b>${V.sw ? esc(V.sw.name) : 'not found'}</b>
      <button class="chip" onclick="tts('Good morning. How are you?','en')">▶ test English</button><button class="chip" onclick="tts('Oyawore. Idhi nade?','sw').then(ok=>ok||toast('No Swahili voice'))">▶ test Dholuo</button></p>
-   <h3>Learners</h3>${S.profiles.map(p => `<div class="dr"><span class="dp">${p.av}</span><span class="dt"><b>${esc(p.name || '–')}</b><i>${p.seeds || 0} 🌱 · ${Object.keys(p.stars).length} lessons · ${mastered(p)} words · ${p.dir === 'en' ? 'learns English' : 'learns Dholuo'}</i></span><button class="spk sm" onclick="delP('${p.id}')">🗑</button></div>`).join('') || '<p class="note">none yet</p>'}
+   <h3>Learners</h3><p class="note">📏 = reading check (5 minutes, the child does it alone). Do it every few weeks: the numbers show if the child really learns to read.</p>
+   ${S.profiles.map(p => { const cs = p.checks || [];
+     return `<div class="dr"><span class="dp">${p.av}</span><span class="dt"><b>${esc(p.name || '–')}</b><i>${p.seeds || 0} 🌱 · ${Object.keys(p.stars).length} lessons · ${mastered(p)} words · ${p.dir === 'en' ? 'learns English' : 'learns Dholuo'}</i>
+       ${cs.slice(-3).reverse().map(c => `<small>${new Date(c.at).toLocaleDateString()}: ${chkLine(c)}</small>`).join('')}</span>
+       ${p.dir === 'en' ? `<button class="spk sm" onclick="startCheck('${p.id}')">📏</button>` : ''}<button class="spk sm" onclick="delP('${p.id}')">🗑</button></div>`; }).join('') || '<p class="note">none yet</p>'}
    ${COMMUNITY.by && COMMUNITY.by.length ? `<h3>Erokamano!</h3><p class="note">${COMMUNITY.by.map(esc).join(' · ')}</p>` : ''}
    ${deferredInstall ? `<button class="btn wide" onclick="installApp()">📲 Install on this tablet</button>` : ''}
    <button class="btn alt wide" onclick="helper=false;go(P()?'home':'who')">Leave helper mode</button>`;
+  offlineVoices();
 };
+async function offlineVoices() {
+  const el = $('offvoices'), urls = []; if (!el || typeof caches === 'undefined') return;
+  ['luo', 'en'].forEach(l => Object.keys(hosted[l] || {}).forEach(id => urls.push(voiceUrl(l, id))));
+  if (!urls.length) return; let n = 0;
+  for (const u of urls) { try { if (await caches.match(new URL(u, location.href).href)) n++; } catch (e) {} }
+  if ($('offvoices')) $('offvoices').innerHTML = `Voices ready offline on this tablet: <b>${n}</b> of ${urls.length}${n < urls.length ? ' – keep the app open with internet for a moment' : ' ✓'}`;
+}
 function delP(id) { const p = S.profiles.find(x => x.id === id); if (!p || !confirm('Delete ' + p.av + ' ' + (p.name || '') + ' and all progress?')) return; S.profiles = S.profiles.filter(x => x.id !== id); if (S.cur === id) S.cur = null; save(); render(); }
 const SCOPES = [['uns', 'Not sure first'], ['w', 'Words'], ['p', 'Phrases'], ['s', 'Sentences'], ['syl', 'Sounds']];
 function scopeList(sc) { return sc === 'uns' ? checkable().filter(it => !S.edits[it.id] && !it.chk).sort((a, b) => (a.sure ? 1 : 0) - (b.sure ? 1 : 0)) : (KIND[sc] || []).filter(it => it.luo || S.edits[it.id]); }
@@ -225,8 +243,8 @@ function openAdd() {
 function saveAdd() { const en = $('aen').value.trim(), luo = $('aluo').value.trim(), pic = $('apic').value.trim(); if (!en || !luo) return toast('English and Dholuo, please');
   S.added.push({en, luo, pic, at: Date.now(), by: helperBy()}); save(); loadAdded(); closeModal(); toast('Added ⭐'); render(); }
 function dl(name, text) { const file = new File([text], name, {type: 'text/plain'});
-  if (navigator.canShare && navigator.canShare({files: [file]})) { navigator.share({files: [file], title: name}).catch(() => {}); return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast('Saved in Downloads: ' + name); }
+  if (navigator.canShare && navigator.canShare({files: [file]})) return navigator.share({files: [file], title: name}).then(() => true, () => false);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast('Saved in Downloads: ' + name); return Promise.resolve(true); }
 const helperBy = () => String(S.helper.name || '').trim().slice(0, 40);
 
 /* ---------- recording (helpers) ---------- */
@@ -262,26 +280,58 @@ function recRow(id, lang) {
 }
 function recBox(id) { return ['luo', 'en'].filter(l => l === 'luo' || I(id).en).map(l => `<div class="recline"><b>${l === 'luo' ? 'Dholuo' : 'English'}</b>${recRow(id, l)}</div>`).join(''); }
 function refreshRec() { const b = $('recbox'); if (b && curEditId) b.innerHTML = recBox(curEditId); if (view === 'recorder' && !$('modal')) render(); }
+const RSCOPES = [['path', 'In lesson order'], ['syl', 'Sounds'], ['w', 'Words'], ['p', 'Phrases'], ['s', 'Sentences'], ['g', 'Built sentences, letters, names'], ['abc', 'English letters'], ['sw', 'Little words']];
+const NUMID = ['num_zero', 'num_one', 'num_two', 'num_three', 'num_four', 'num_five', 'num_six', 'num_seven', 'num_eight', 'num_nine'];
+function lessonOrder(lang) {          // the order in which children meet things: record from the top
+  const out = [], seen = new Set(), add = id => { if (id && ITEMS[id] && !seen.has(id)) { seen.add(id); out.push(ITEMS[id]); } };
+  if (lang === 'luo') KIND.syl.forEach(it => add(it.id));
+  let later = [], stage = null;                          // built sentences come after the words of the same stage
+  PATH.forEach(u => {
+    if (u.stage !== stage) { later.forEach(add); later = []; stage = u.stage; }
+    if (u.kind === 'LT') add(KEYW[u.l]);
+    if (u.kind === 'EL' || u.kind === 'CAP') (u.letters || []).forEach(c => add('abc_' + c.toLowerCase()));
+    if (u.kind === 'CAP') u.letters.forEach(c => add('name_' + c.toLowerCase()));
+    if (u.kind === 'NUM') u.digits.forEach(d => add(NUMID[d]));
+    (u.ids || []).forEach(add);
+    if (u.kind === 'PAT') later.push(...GEN[u.pat.id]);
+    if (u.kind === 'DO') later.push(...GEN.do);
+    if (u.kind === 'ST') u.story.qs.forEach(x => add(x.say));
+    if (u.kind === 'SW') later.push(...u.sw.tf);
+  });
+  later.forEach(add);
+  ['w', 'p', 's', 'g', 'sw', 'abc'].forEach(k => (KIND[k] || []).forEach(it => add(it.id)));
+  return out;
+}
+const sayText = (it, lang) => lang === 'en' ? (it.letter ? it.letter.toUpperCase() + ' … ' + it.en : it.en) : luoOf(it);
+function recPool(sc, lang) { return (sc === 'path' ? lessonOrder(lang) : (KIND[sc] || [])).filter(it => sayText(it, lang)); }
 VIEWS.recorder = app => {
-  const lang = ctx.lang || 'luo', sc = ctx.sc || 'syl'; ctx.lang = lang; ctx.sc = sc;
-  if (!ctx.list) { ctx.list = (KIND[sc] || []).filter(it => (lang === 'luo' ? luoOf(it) : it.en) && !hasAudio(it.id, lang)); ctx.i = 0; }
-  const L = ctx.list, chips = `<div class="chips">${SCOPES.slice(1).map(s => `<button class="chip ${sc === s[0] ? 'on' : ''}" onclick="go('recorder',{sc:'${s[0]}',lang:'${lang}'})">${s[1]}</button>`).join('')}</div>
-    <div class="chips"><button class="chip ${lang === 'luo' ? 'on' : ''}" onclick="go('recorder',{sc:'${sc}',lang:'luo'})">Dholuo</button><button class="chip ${lang === 'en' ? 'on' : ''}" onclick="go('recorder',{sc:'${sc}',lang:'en'})">English</button></div>`;
+  const lang = ctx.lang || 'luo', sc = ctx.sc || (lang === 'luo' ? 'syl' : 'path'); ctx.lang = lang; ctx.sc = sc;
+  const pool = recPool(sc, lang), done = pool.filter(it => hasAudio(it.id, lang)).length;
+  if (!ctx.list) { ctx.list = pool.filter(it => !hasAudio(it.id, lang)); ctx.i = 0; }
+  const L = ctx.list, chips = `<div class="chips"><button class="chip ${lang === 'luo' ? 'on' : ''}" onclick="go('recorder',{lang:'luo'})">Dholuo</button><button class="chip ${lang === 'en' ? 'on' : ''}" onclick="go('recorder',{lang:'en'})">English</button></div>
+    <div class="chips">${RSCOPES.filter(r => lang === 'en' ? r[0] !== 'syl' : !['abc', 'sw'].includes(r[0])).map(r => `<button class="chip ${sc === r[0] ? 'on' : ''}" onclick="go('recorder',{sc:'${r[0]}',lang:'${lang}'})">${r[1]}</button>`).join('')}</div>
+    <p class="note">Recorded here: <b>${done}</b> of ${pool.length}</p>`;
   if (ctx.i >= L.length) { app.innerHTML = chips + `<div class="card"><div class="pic lg">🎉</div><div class="tt">${L.length ? 'All recorded!' : 'Everything here has a voice already.'}</div><button class="btn" onclick="go('helper')">Back to helpers</button></div>`; return; }
-  const it = L[ctx.i];
-  app.innerHTML = chips + `<p class="note">${ctx.i + 1} / ${L.length} · Say it clearly, once, not too fast. ${sc === 'syl' ? 'Sounds are the most important: children learn to read with them.' : 'Wrong text? Tap ✎.'}</p>
-    <div class="card">${sc === 'syl' ? '' : `<button class="pen" onclick="openEdit('${it.id}')">✎</button>`}<div class="pic lg ${sc === 'syl' ? 'txt' : ''}">${esc(it.pic)}</div><div class="tt">${esc(it.en)}</div><div class="nt big">${esc(luoOf(it))}</div></div>
+  const it = L[ctx.i], other = lang === 'en' ? luoOf(it) : it.en, tip = sc === 'syl' ? 'Sounds are the most important: children learn to read with them.' : lang === 'en' ? 'Speak slowly and clearly, like a good teacher. Not too loud.' : 'Wrong text? Tap ✎.';
+  app.innerHTML = chips + `<p class="note">${ctx.i + 1} / ${L.length} · Say it once, clearly. ${tip}</p>
+    <div class="card">${['syl', 'abc'].includes(it.kind) || it.kind === 'g' && !it.luo ? '' : `<button class="pen" onclick="openEdit('${it.id}')">✎</button>`}<div class="pic lg ${sc === 'syl' ? 'txt' : ''}">${esc(it.pic)}</div>
+    <div class="tt">${esc(sayText(it, lang))}</div>${other ? `<div class="nt">${esc(other)}</div>` : ''}</div>
     <div class="recline c">${recRow(it.id, lang)}<button class="btn sm alt" onclick="cancelRec();ctx.i++;render()">Skip ›</button></div><button class="small-link" onclick="go('helper')">‹ Helpers</button>`;
 };
 const b64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
 /* One file with everything from this tablet. tools/merge_contributions.py turns these files into the published app. */
-async function exportAll() {
+async function exportAll(all) {
   if (!S.helper.ok) { toast('Please tick the agreement first'); return; }
-  try { const audio = {};
-    for (const k of await DB.keys()) { const r = await DB.get(k); if (r && r.blob) audio[k] = {mime: r.mime, ts: r.ts, by: r.by || helperBy(), data: await b64(r.blob)}; }
-    if (!Object.keys(S.edits).length && !S.added.length && !Object.keys(audio).length) { toast('Nothing to send yet'); return; }
-    const by = helperBy(), name = 'nawiri-contrib-' + (slug(by) || 'helper') + '-' + new Date().toISOString().slice(0, 10) + '-' + S.dev + '.txt';
-    dl(name, JSON.stringify({app: 'nawiri-pamoja-contrib', v: 1, at: new Date().toISOString(), by, device: S.dev, consent: true, licence: 'CC BY-SA 4.0', edits: S.edits, added: S.added, audio}));
+  const since = all ? 0 : (S.lastExport || 0), now = Date.now();
+  try { const audio = {}, edits = {}, added = S.added.filter(w => (w.at || 1) > since);
+    Object.keys(S.edits).forEach(k => { if ((S.edits[k].at || 1) > since) edits[k] = S.edits[k]; });
+    for (const k of await DB.keys()) { const r = await DB.get(k); if (r && r.blob && (r.ts || 1) > since) audio[k] = {mime: r.mime, ts: r.ts, by: r.by || helperBy(), data: await b64(r.blob)}; }
+    const n = Object.keys(edits).length + added.length + Object.keys(audio).length;
+    if (!n) { toast(all ? 'Nothing to send yet' : 'Nothing new since the last export'); return; }
+    const by = helperBy(), stamp = new Date().toISOString().slice(0, 16).replace(':', '').replace('T', '-'),
+      name = 'nawiri-contrib-' + (slug(by) || 'helper') + '-' + stamp + '-' + S.dev + (all ? '-all' : '') + '.txt';
+    const ok = await dl(name, JSON.stringify({app: 'nawiri-pamoja-contrib', v: 1, at: new Date(now).toISOString(), by, device: S.dev, consent: true, licence: 'CC BY-SA 4.0', since, edits, added, audio}));
+    if (ok) { S.lastExport = now; save(); render(); }
   } catch (e) { toast('Export failed'); }
 }
 async function importAny(f) {
@@ -302,6 +352,15 @@ async function importAny(f) {
   } catch (e) { toast('Some recordings could not be saved'); }
   save(); loadAdded(); toast('Imported ' + n + ' entries and ' + a + ' recordings ✓'); render();
 }
+
+VIEWS.chkres = app => {
+  const p = S.profiles.find(x => x.id === ctx.pid), cs = p.checks || [], c = cs[cs.length - 1], prev = cs[cs.length - 2];
+  app.innerHTML = `<div class="card res"><div class="pic xl">${p.av}</div><div class="tt">Erokamano!</div><div class="stars">⭐⭐⭐</div></div>
+    <div class="card"><table class="chk">${CHECK_PARTS.map(([n, e, txt, secs]) => { const v = c.r[n], d = prev && prev.r[n] ? v.ok - prev.r[n].ok : null;
+      return `<tr><td>${e}</td><td>${esc(txt.split(':')[0])}</td><td><b>${v.ok}</b>${secs ? ' / min' : ' / 4'}</td><td>${d === null ? '' : d > 0 ? '▲ ' + d : d < 0 ? '▼ ' + -d : '='}</td></tr>`; }).join('')}</table>
+    <p class="note">Correct answers ${'in one minute'} (writing: of 4). ${prev ? 'Compared with ' + new Date(prev.at).toLocaleDateString() + '.' : 'Repeat the check every few weeks to see progress.'}</p></div>
+    <button class="go" onclick="go('home')">▶</button>`;
+};
 
 /* ================= START ================= */
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; if (view === 'helper') render(); });

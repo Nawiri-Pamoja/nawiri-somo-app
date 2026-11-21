@@ -14,7 +14,7 @@ tmp = os.path.join(tempfile.mkdtemp(), 'nphand.woff')
 make_font.main(os.path.join(here, 'src', 'data_hand.js'), tmp)
 font = base64.b64encode(open(tmp, 'rb').read()).decode()
 css = ("@font-face{font-family:NPHand;src:url(data:font/woff;base64,%s) format('woff');font-display:block;size-adjust:112%%}\n" % font) + src('app.css')
-js = '\n'.join(src(n) for n in ['logo.js', 'data_hand.js', 'data_words.js', 'data_talk.js', 'data_read.js', 'data_community.js', 'app_core.js', 'app_session.js', 'app_write.js', 'app_views.js'])
+js = '\n'.join(src(n) for n in ['logo.js', 'data_hand.js', 'data_words.js', 'data_talk.js', 'data_read.js', 'data_books.js', 'data_community.js', 'app_core.js', 'app_session.js', 'app_write.js', 'app_views.js'])
 html = f'''<!doctype html>
 <html lang="en">
 <head>

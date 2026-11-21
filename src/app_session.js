@@ -40,13 +40,8 @@ function sentSession(its, light) {
   shuffle(its).slice(0, light ? 4 : 6).forEach(it => q.push(pk(it, 'n>t', its)));
   return q;
 }
-function genPat(p) {
-  return shuffle(PATTERN_NOUNS.map(I).filter(usable)).slice(0, 8).map((n, i) => ({id: 'gen' + i, kind: 'g', pic: n.pic, picOk: false, en: p.en(n.en), luo: p.luo(luoOf(n)), sure: true}));
-}
-function genDo() {
-  const out = []; shuffle(DOING).slice(0, 4).forEach(v => shuffle(PERSONS).slice(0, 3).forEach(pe => out.push({id: 'gen' + out.length, kind: 'g', pic: '🏃', picOk: false, en: pe[0] + ' ' + v[0] + '.', luo: cap(pe[1] + v[1]) + '.', sure: true})));
-  return out;
-}
+function genPat(p) { return shuffle(GEN[p.id].map(I).filter(usable)).slice(0, 8); }
+function genDo() { const vs = shuffle(DOING).slice(0, 4).map(v => slug(v[0])); return shuffle(GEN.do.map(I).filter(it => vs.some(v => it.id.startsWith('do_' + v + '_')) && usable(it))).slice(0, 12); }
 function sessionFor(u) {
   const its = u.ids.map(I).filter(usable);
   switch (u.kind) {
@@ -57,6 +52,7 @@ function sessionFor(u) {
     case 'CAP': return capSession(u);
     case 'NUM': return numSession(u);
     case 'FL': return fluencySession(u);
+    case 'BK': return bookSession(u);
     case 'EL': return engLetterSession(u);
     case 'CVC': return cvcSession(u);
     case 'SW': return swSession(u);
@@ -67,12 +63,17 @@ function sessionFor(u) {
     case 'DO': { const g = genDo(); return g.slice(0, 3).map(it => ({t: 'meet', it})).concat(shuffle(g).map(it => pk(it, 't>n', g)), sentSession(g, true)); }
     case 'T': return shuffle(its.filter(it => /^[A-Za-z' ()-]+$/.test(tText(it)))).slice(0, 10).map(it => ({t: 'type', it}));
     case 'D': return shuffle(its).slice(0, 5).map(it => pk(it, 't>n', its)).concat(shuffle(its.filter(buildable)).slice(0, 3).map(it => arrBuild(it, its)));
-    case 'ST': return u.story.qs.map(x => ({t: 'q', q: x.q, a: x.a, opts: x.opts})).concat(shuffle(its.filter(buildable)).slice(0, 4).map(it => arrBuild(it, its)));
+    case 'ST': return u.story.qs.map(x => ({t: 'q', q: x.q, a: x.a, opts: x.opts, sayIt: I(x.say)})).concat(shuffle(its.filter(buildable)).slice(0, 4).map(it => arrBuild(it, its)));
   }
   return [];
 }
 function reviewSession(p) {
-  return shuffle(dueItems(p).filter(usable)).slice(0, 12).map(it => {
+  const due = shuffle(dueItems(p).filter(usable)), lts = due.filter(it => it.kind === 'lt').slice(0, 4);
+  return shuffle(lts.concat(due.filter(it => it.kind !== 'lt').slice(0, 12 - lts.length))).map(it => {
+    if (it.kind === 'lt') { const l = it.luo, known = LIT_SEQ.slice(0, LIT_SEQ.indexOf(l) + 1), r = Math.random(), f = firstSound(l, 1)[0];
+      if (r < .35) return Object.assign(findEx(l, known), {lt: it.id});
+      if (r < .65 && f) return Object.assign(f, {lt: it.id});
+      return W(l, 3, {lt: it.id}); }
     const pool = (TOPICS[it.topic] ? TOPICS[it.topic].ids.map(I) : KIND[it.kind] || []).filter(usable);
     if (it.kind === 'w') { const c = ['n>t', 'a>t']; if (it.picOk) c.push('p>t', 'a>p'); if (spellable(it, dir())) c.push('sp'); const m = c[Math.floor(Math.random() * c.length)];
       if (!nText(it) && m === 'n>t') return pk(it, 'p>t', pool); return m === 'sp' ? arrSpell(it, dir()) : pk(it, m, pool); }
@@ -90,26 +91,29 @@ function startSession(u, q) {
 function exDone(ok, graded) {
   const ex = ses.q[ses.i]; clearTimeout(ses.timer);
   if (ex.it) ses.seen[ex.it.id] = ex.it;
-  if (graded !== false) { ses.graded++; if (ok) ses.right++; else { if (ex.it) ses.miss[ex.it.id] = 1; if (!ex.re) ses.q.push(Object.assign({}, ex, {re: true, st: null})); } }
+  if (ex.lt && I(ex.lt)) { ses.seen[ex.lt] = I(ex.lt); if (graded !== false && !ok) ses.miss[ex.lt] = 1; }
+  if (ses.chk && ex.part && graded !== false) { const r = ses.chk[ex.part] = ses.chk[ex.part] || {ok: 0, n: 0}; r.n++; if (ok) r.ok++; }
+  if (graded !== false) { ses.graded++; if (ok) ses.right++; else { if (ex.it) ses.miss[ex.it.id] = 1; if (!ex.re && !ses.chk) ses.q.push(Object.assign({}, ex, {re: true, st: null})); } }
   ses.i++; stopSound();
-  if (ses.i >= ses.q.length) finishSession(); else render();
+  if (ses.chk && ses.partEnd && Date.now() > ses.partEnd) skipPart();
+  if (ses.i >= ses.q.length) (ses.chk ? finishCheck() : finishSession()); else render();
 }
 function finishSession() {
   const p = P(), acc = ses.graded ? ses.right / ses.graded : 1, stars = acc >= .9 ? 3 : acc >= .7 ? 2 : 1;
   Object.values(ses.seen).forEach(it => grade(it, !ses.miss[it.id]));
   const gain = ses.right + 5; p.seeds = (p.seeds || 0) + gain;
   const old = ses.u && ses.u.id ? (p.stars[ses.u.id] || 0) : 0;
-  if (ses.u && ses.u.id) p.stars[ses.u.id] = Math.max(old, stars);
+  if (ses.u && ses.u.id) { p.stars[ses.u.id] = Math.max(old, stars); p.tries = p.tries || {}; p.tries[ses.u.id] = (p.tries[ses.u.id] || 0) + 1; }
   touchDay(p); p.best = Math.max(p.best || 0, p.streak || 0); save();
   ses.res = {stars, gain, first: !old}; beep(true); go('res');
 }
 function quitSession() { stopSound(); cancelSayRec(); ses = null; go('home'); }
 
-const HINT = {meet: '👀 👂', pick: '👆', arr: '🧩', match: '🔗', say: '🎙️', lintro: '🔤 👂', eintro: '🔤 👂', write: '✍️', type: '⌨️', q: '❓', ch: '👆', find: '🔍', blend: '🔗', kb: '⌨️', tf: '✅ ❌'};
+const HINT = {book: '📖', part: '⏱️', meet: '👀 👂', pick: '👆', arr: '🧩', match: '🔗', say: '🎙️', lintro: '🔤 👂', eintro: '🔤 👂', write: '✍️', type: '⌨️', q: '❓', ch: '👆', find: '🔍', blend: '🔗', kb: '⌨️', tf: '✅ ❌'};
 function sesView(app) {
   const ex = ses.q[ses.i];
   app.innerHTML = `<div class="sx"><div class="sxtop"><button class="x" onclick="quitSession()" aria-label="Stop">✕</button>
-    <div class="bar"><i style="width:${Math.round(100 * ses.i / ses.q.length)}%"></i></div><span class="hint">${tone(HINT[ex.t] || '')}</span></div>
+    <div class="bar">${ses.chk && ses.partEnd ? `<i class="tick" style="animation-duration:${Math.max(0, (ses.partEnd - Date.now()) / 1000)}s"></i>` : `<i style="width:${Math.round(100 * ses.i / ses.q.length)}%"></i>`}</div><span class="hint">${tone(HINT[ex.t] || '')}</span></div>
     <div id="exb" class="exb"></div></div>`;
   EX[ex.t](ex, $('exb'));
 }
@@ -139,7 +143,7 @@ function options(it, a, b, pool, n) {
 }
 function sayPrompt(ex) {
   const it = ex.it, a = ex.st.a;
-  if (ex.mode === 'a>l') { ++spk; return tts(it.letter.toUpperCase() + '. ' + it.en + '.', 'en'); }
+  if (ex.mode === 'a>l') return sayAbc(it);
   if (a === 'la') { ++spk; return sayLuo(it); }
   return sayT(it);
 }
@@ -171,7 +175,7 @@ const EX = {
   q(ex, el) {
     if (!ex.st) ex.st = {opts: shuffle(ex.opts), sel: -1};
     const st = ex.st, lock = st.sel >= 0, good = lock && st.opts[st.sel] === ex.a;
-    el.innerHTML = `<div class="card prompt"><div class="tt">${esc(ex.q)}</div><button class="spk" onclick="spk++;tts(cur().q,'en')">🔊</button></div>
+    el.innerHTML = `<div class="card prompt"><div class="tt">${esc(ex.q)}</div><button class="spk" onclick="spk++;sayEn(cur().sayIt,cur().q)">🔊</button></div>
       <div class="opts">${st.opts.map((o, i) => `<button class="opt ${lock ? (o === ex.a ? 'good' : i === st.sel ? 'bad' : '') : ''}" onclick="X.q(${i})">${esc(o)}</button>`).join('')}</div>
       ${lock && !good ? nextBtn('exDone(false)') : ''}`;
   },
@@ -227,7 +231,7 @@ const X = {
     const ex = cur(), st = ex.st; if (st.sel >= 0) return; st.sel = i;
     const ok = val(st.opts[i], st.b) === val(ex.it, st.b), me = ses, at = ses.i; beep(ok); render();
     if (ex.mode === 'a>l') sayPrompt(ex); else if ((st.a === 'la' || ex.la) && canLuo(ex.it)) { ++spk; sayLuo(ex.it); } else if (ex.it.en) sayT(ex.it);
-    if (ok) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(true); }, 1500);
+    if (ok || ses.chk) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(ok); }, ok ? 1500 : 900);
   },
   q(i) { const ex = cur(), st = ex.st; if (st.sel >= 0) return; st.sel = i; const ok = st.opts[i] === ex.a, me = ses, at = ses.i; beep(ok); render();
     if (ok) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(true); }, 1100); },
@@ -265,7 +269,7 @@ const X = {
   },
   sayNext() { cancelSayRec(); exDone(true, false); },
   syl(s) { const it = I('syl_' + s); ++spk; if (canLuo(it)) sayLuo(it); else toast('🎙️ No Dholuo voice yet – helpers can record it'); },
-  elSay() { const it = cur().it; ++spk; tts(it.letter.toUpperCase() + '. ' + it.en + '.', 'en'); },
+  elSay() { sayAbc(cur().it); },
   type() {
     const ex = cur(), st = ex.st, i = $('tin'); if (!i) return;
     if (st.show) return exDone(false);

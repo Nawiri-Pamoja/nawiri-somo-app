@@ -23,12 +23,12 @@ It runs in the browser of an Android tablet or phone, is installed once, and the
   and a shared village score (“Pamoja”) instead of a ranking.
 - **The community owns the content.** Native speakers check, correct, extend and record everything inside the app.
 
-## The learning path (9 stages, about 220 lessons)
+## The learning path (9 stages, about 255 lessons)
 
 | Stage | What children do | Lessons |
 |---|---|---|
 | A · *Winji* – Listen | Pictures and sound only, no reading: animals, food, body, family, numbers, colours | 14 |
-| B · *Som gi ndik* – Read and write | The full Dholuo literacy course (see below) | 48 |
+| B · *Som gi ndik* – Read and write | The full Dholuo literacy course with 32 reading booklets (see below) | 80 |
 | B2 · English letters | English letter sounds, writing A–Z, first English words, sight words | 22 |
 | C · *Weche mokwongo* – First words | Core vocabulary, greetings, first sentence patterns | 21 |
 | D · *Wuoyo* – Talk | Class, home, play, feelings, questions, dialogues | 29 |
@@ -60,6 +60,20 @@ Three ways in, chosen when a child's profile is made:
 4. **Capital letters** (grouped by how they are written) with names and places: *Achieng', Otieno, Kisumu, Siaya …*
 5. **Writing numbers 0–9** with counting.
 6. **Reading sentences** for fluency.
+7. **32 reading booklets** (*Buge mag somo*), from *mama · ot · kom · it* to short stories. The app checks every word and
+   places each booklet right after the review where its last letter was learned, so a child can always read every word.
+   Children read each page and choose the matching picture, then read the whole booklet (with English below each line)
+   and copy a sentence. Booklets before the capital letters are written in small letters on purpose.
+
+**Mastery, not speed.** In the reading and writing stages a lesson only counts as done with 2 of 3 stars.
+With fewer, the child sees “Tem kendo! 💪” and repeats it; after 3 tries the path opens anyway, so nobody gets stuck.
+Letters are part of the daily review (🔁) like words: letters a child found hard come back sooner
+(find the letter, first sound, write it from memory).
+
+**Reading check (📏).** In Helpers → Learners, a 5-minute check the child does alone, modelled on the
+Early Grade Reading Assessment used in Kenyan schools: letter–sound knowledge, word reading and sentence reading,
+each counted as correct answers in one minute, plus spelling 4 words. Results are kept per child with the date,
+so helpers can see over weeks whether a child is really learning to read.
 
 Which words a lesson uses is computed from the letters a child has learned. Every word a native speaker corrects
 or adds becomes reading material automatically.
@@ -77,7 +91,7 @@ spaced repetition of weak words, a memory game, a two-player game, dialogues and
 
 ## Content
 
-About 680 words, 200 phrases, 85 sentences, 10 dialogues, 7 stories, 110 syllables, 26 English letters,
+About 680 words, 200 phrases, 85 sentences, 10 dialogues, 8 stories, 32 reading booklets, 110 syllables, 26 English letters,
 40 short English words, 30 sight words, all with pictures.
 
 **Important:** the Dholuo was written without a native speaker. 93 entries are marked as uncertain, and the rest can
@@ -88,6 +102,19 @@ also contain mistakes, other dialect forms or unusual spellings. The helper mode
 Open **Helpers / Jokony** on the first screen. See [HELPERS.md](HELPERS.md).
 Check and correct the Dholuo, record your voice (start with the 110 syllables: the reading course needs them most),
 and add your own words. `review/dholuo-review.csv` lists every entry for checking outside the app.
+
+## Voices
+
+Every word, sentence, letter, name and question the app speaks is a fixed entry that can be **recorded by a person**,
+in English as well as in Dholuo (about 1,900 English and 1,600 Dholuo entries).
+Recorded voices are shipped with the app and always win. Where nothing is recorded yet, the tablet's own
+text-to-speech voice reads English (and the Swahili voice reads Dholuo); both can be switched off in Helpers → Settings.
+
+- **Record:** Helpers → *Record English* / *Record Dholuo*. “In lesson order” starts with what children meet first.
+- **Polished automatically:** when the app is built, every recording is trimmed (silence at start and end),
+  brought to the same loudness and stored as a small `.m4a` file (needs `ffmpeg`; the deploy workflow installs it).
+- One clear, calm voice per language is best: children get used to it. A Kenyan English speaker, for example a teacher,
+  gives children the English they will hear at school.
 
 ## How helpers' work gets into the app for everyone
 

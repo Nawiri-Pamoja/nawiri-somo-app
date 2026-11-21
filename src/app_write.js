@@ -137,7 +137,6 @@ function writer(box, ex, done) {
 let WR = null;
 
 /* ---------- helpers for the course ---------- */
-const LG = s => (String(s).toLowerCase().match(/ng'|ng|ny|ch|dh|th|sh|[a-z]|'/g) || []);
 const isV = g => VOWELS.includes(g);
 function syllab(w) { const g = LG(w), out = []; let cur = '';
   for (let i = 0; i < g.length; i++) { cur += g[i]; if (isV(g[i]) && i + 1 < g.length && !isV(g[i + 1])) { let j = i + 1; while (j < g.length && !isV(g[j])) j++; if (j < g.length) { out.push(cur); cur = ''; } } }
@@ -178,15 +177,15 @@ function wordDrills(words, q, n) {
 function letterSession(u) {
   const l = u.l, known = u.known, q = [], vow = known.filter(isV), cons = known.filter(k => !isV(k));
   q.push({t: 'lintro', l, u});
-  firstSound(l, 2).forEach(e => q.push(e));
+  firstSound(l, 2).forEach(e => q.push(Object.assign(e, {lt: ltId(l)})));
   q.push(W(l, 1, {noDemo: true}));
-  q.push(findEx(l, known));
+  q.push(Object.assign(findEx(l, known), {lt: ltId(l)}));
   q.push(W(l, 2));
   if (!isV(l) && vow.length) q.push({t: 'blend', c: l, vs: vow});
   else if (isV(l) && cons.length) q.push({t: 'blend', c: cons[cons.length - 1], vs: vow});
   if (canSyl() && cons.length && vow.length) { const sy = [].concat(...cons.map(c => vow.map(v => sylItem(c + v)))).filter(Boolean);
     shuffle(sy.filter(s => LG(s.luo).includes(l))).slice(0, 3).forEach(s => q.push(pk(s, 'la>n', sy))); }
-  q.push(W(l, 3));
+  q.push(W(l, 3, {lt: ltId(l)}));
   const words = decWords(known, true).filter(it => LG(luoOf(it)).includes(l)); words.known = known;
   wordDrills(words.sort((a, b) => luoOf(a).length - luoOf(b).length), q, 4);
   const syl = isV(l) ? (cons.length ? cons[cons.length - 1] + l : null) : (vow.length ? l + vow[vow.length - 1] : null);
@@ -194,15 +193,17 @@ function letterSession(u) {
   const short = words.filter(it => luoOf(it).length <= 5)[0]; if (short) q.push(W(luoOf(short), 2, {it: short}));
   return q;
 }
-function tfLuo(n) {
-  const nouns = PATTERN_NOUNS.map(I).filter(it => it && it.picOk && luoOf(it)), pats = [['Ma en ', '.'], ['Aneno ', '.'], ['An gi ', '.']], q = [];
-  for (let i = 0; i < n; i++) { const a = nouns[Math.floor(Math.random() * nouns.length)], truth = Math.random() < .5, b = truth ? a : shuffle(nouns.filter(x => x.pic !== a.pic))[0], p = pats[i % pats.length];
-    q.push({t: 'tf', text: p[0] + luoOf(a) + p[1], pic: b.pic, truth, lang: 'luo'}); }
+function tfFrom(ids, n, lang) {
+  const its = ids.map(I).filter(it => it && I(it.noun) && I(it.noun).picOk && (lang === 'en' ? it.en : luoOf(it))), q = [];
+  shuffle(its).slice(0, n).forEach(it => { const noun = I(it.noun), truth = Math.random() < .5, other = shuffle(its.filter(x => I(x.noun).pic !== noun.pic))[0];
+    q.push({t: 'tf', text: lang === 'en' ? it.en : luoOf(it), pic: truth || !other ? noun.pic : I(other.noun).pic, truth: truth || !other, lang, sayIt: it}); });
   return q;
 }
+const tfLuo = (n, lower) => tfFrom(GEN.this.concat(GEN.see, GEN.have), n, 'luo').map(e => lower ? Object.assign(e, {text: e.text.charAt(0).toLowerCase() + e.text.slice(1)}) : e);
 function reviewLit(u) {
   const q = [], known = u.known, fresh = u.fresh, words = decWords(known, true); words.known = known;
-  fresh.forEach(l => q.push(findEx(l, known)));
+  fresh.forEach(l => q.push(Object.assign(findEx(l, known), {lt: ltId(l)})));
+  fresh.forEach(l => q.push(W(l, 3, {lt: ltId(l)})));
   const fw = shuffle(words.filter(it => LG(luoOf(it)).some(g => fresh.includes(g)))).concat(shuffle(words)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 8);
   if (fw.length >= 2) {
     fw.slice(0, 4).forEach(it => q.push(pk(it, 'n>p', fw, Math.max(3, Math.min(4, fw.length)), 1)));
@@ -213,7 +214,7 @@ function reviewLit(u) {
   }
   const vow = known.filter(isV), cons = known.filter(k => !isV(k));
   if (fw.length < 4 && cons.length && vow.length) { shuffle(fresh).forEach(l => q.push(W(isV(l) ? cons[0] + l : l + vow[0], 2))); }
-  if (['m', 'a', 'e', 'n'].every(x => known.includes(x)) && known.includes('o')) tfLuo(3).forEach(e => q.push(e));
+  if (['m', 'a', 'e', 'n'].every(x => known.includes(x)) && known.includes('o')) tfLuo(3, true).forEach(e => q.push(e));
   return q;
 }
 function capSession(u) {
@@ -221,7 +222,7 @@ function capSession(u) {
   u.letters.forEach(C => { q.push(W(C, 1)); q.push(W(C, 2, {noDemo: true})); });
   shuffle(u.letters).forEach(C => q.push({t: 'ch', kind: 'cap', prompt: H(C, 'xl'), opts: shuffle([C.toLowerCase()].concat(shuffle('abdeghmnqrty'.split('').filter(x => x !== C.toLowerCase())).slice(0, 3))).map(v => ({v, h: H(v, 'lg')})), ans: C.toLowerCase()}));
   shuffle(u.letters).slice(0, 3).forEach(C => { const nm = NAMES[C], others = shuffle(Object.values(NAMES).filter(x => x[0] !== C)).slice(0, 2);
-    q.push({t: 'ch', kind: 'name', prompt: H(C, 'xl'), opts: shuffle([nm].concat(others)).map(v => ({v, h: H(v, 'md')})), ans: nm}); });
+    q.push({t: 'ch', kind: 'name', prompt: H(C, 'xl'), opts: shuffle([nm].concat(others)).map(v => ({v, h: H(v, 'md')})), ans: nm, sayIt: I('name_' + C.toLowerCase())}); });
   const nm = NAMES[u.letters[0]]; if (nm.length <= 8) q.push(W(nm, 2));
   q.push(W(u.letters.map(c => c + c.toLowerCase()).slice(0, 2).join(' '), 3));
   return q;
@@ -245,11 +246,11 @@ function fluencySession(u) {
 }
 function engLetterSession(u) {
   const q = [], its = u.letters.map(c => I('abc_' + c));
-  its.forEach(it => { q.push({t: 'eintro', it}); q.push(W(it.letter, 2, {noDemo: true})); q.push(W(it.letter.toUpperCase(), 2, {noDemo: true})); });
+  its.forEach(it => { q.push({t: 'eintro', it}); q.push(W(it.letter, 2, {noDemo: true, eng: true})); q.push(W(it.letter.toUpperCase(), 2, {noDemo: true, eng: true})); });
   its.forEach(it => q.push(findEx(it.letter, 'abcdefghijklmnopqrstuvwxyz'.split(''))));
   shuffle(its).forEach(it => q.push(pk(it, 'a>l', KIND.abc)));
   shuffle(its).forEach(it => q.push(pk(it, 'p>t', KIND.abc)));
-  its.forEach(it => q.push(W(it.letter, 3)));
+  its.forEach(it => q.push(W(it.letter, 3, {eng: true})));
   return q;
 }
 function cvcSession(u) {
@@ -264,8 +265,7 @@ function swSession(u) {
   const q = [], its = u.ids.map(I), nouns = [].concat(...CVC.map(g => g.ids)).map(I);
   its.forEach(it => q.push({t: 'meet', it}));
   shuffle(its).forEach(it => q.push(pk(it, 'a>t', its)));
-  for (let i = 0; i < 6; i++) { const a = nouns[Math.floor(Math.random() * nouns.length)], truth = Math.random() < .5, b = truth ? a : shuffle(nouns.filter(x => x.pic !== a.pic))[0];
-    q.push({t: 'tf', text: u.sw.pat[i % 3].replace('#', a.en), pic: b.pic, truth, lang: 'en'}); }
+  tfFrom(u.sw.tf, 6, 'en').forEach(e => q.push(e));
   const ex = nouns[Math.floor(Math.random() * nouns.length)]; q.push(W(u.sw.pat[0].replace('#', ex.en), 'copy'));
   return q;
 }
@@ -275,7 +275,7 @@ function introDone() { const b = document.querySelector('#exb .go'); if (b) b.cl
 Object.assign(EX, {
   write(ex, el) {
     const label = ex.shape ? `<div class="pic md">${SHAPES[ex.shape].e}</div>` : `<div class="wlab">${H(ex.text, ex.text.length > 4 ? 'md' : 'lg')}${ex.it ? ' ' + picH(ex.it, 'sm') : ''}</div>`;
-    const free = ex.lvl === 3 || ex.lvl === 'copy', said = ex.it || (ex.text && ex.text.length <= 3 && /^[a-z']+$/.test(ex.text) && sylItem(ex.text));
+    const free = ex.lvl === 3 || ex.lvl === 'copy', said = ex.it || ex.eng || /^[A-Z]$/.test(ex.text || '') || (ex.text && I('name_' + ex.text.charAt(0).toLowerCase()) && I('name_' + ex.text.charAt(0).toLowerCase()).en === ex.text) || (ex.text && ex.text.length <= 3 && /^[a-z']+$/.test(ex.text) && sylItem(ex.text));
     el.innerHTML = `<div class="card wcard">${free || ex.lvl === 2 ? label : ''}<div class="wbox"></div>
       <div class="wtools"><button class="wt" onclick="WR&&WR.demo()" aria-label="Show me">👀</button><button class="wt" onclick="WR&&WR.clear()" aria-label="Clear">↺</button>
       ${said ? `<button class="wt" onclick="X.wsay()">🔊</button>` : ''}${free ? `<button class="wt wchk" onclick="WR&&WR.check()">✓</button>` : ''}</div>
@@ -343,15 +343,19 @@ Object.assign(EX, {
   }
 });
 Object.assign(X, {
-  wsay() { const ex = cur(); ++spk; const it = ex.it || sylItem(ex.text); if (!it) return; if (ex.it && ex.it.topic === 'cvc') sayEn(it); else if (canLuo(it)) sayLuo(it); else if (/[A-Z]/.test(ex.text)) tts(ex.text, 'en'); },
+  wsay() { const ex = cur(), t = ex.text || ''; ++spk;
+    if (ex.it) return ex.it.topic === 'cvc' || !luoOf(ex.it) ? sayEn(ex.it) : canLuo(ex.it) ? sayLuo(ex.it) : sayEn(ex.it);
+    if (ex.eng || /^[A-Z]$/.test(t)) { const a = I('abc_' + t.toLowerCase()); if (a) return sayAbc(a); }
+    const nm = I('name_' + t.charAt(0).toLowerCase()); if (nm && nm.en === t) return sayEn(nm);
+    const sy = sylItem(t); if (sy && canLuo(sy)) sayLuo(sy); },
   chSay(i) { const ex = cur(); if (ex.kind === 'first') { ++spk; if (canLuo(lsound(ex.l))) sayLuo(lsound(ex.l)); } },
   ch(i) {
     const ex = cur(), st = ex.st; if (st.sel >= 0) return; st.sel = i; const opts = ex.kind === 'first' ? ex.opts.map(o => ({v: o.id})) : ex.opts, ok = opts[i].v === ex.ans, me = ses, at = ses.i;
     beep(ok); render(); ++spk;
     if (ex.kind === 'first') { const it = I(ex.ans); if (canLuo(it)) sayLuo(it); }
     else if (ex.kind === 'count') { const it = I(['', 'num_one', 'num_two', 'num_three', 'num_four', 'num_five', 'num_six', 'num_seven', 'num_eight', 'num_nine'][ex.num]) || I('num_zero'); if (it) sayBoth(it); }
-    else if (ex.kind === 'name') tts(ex.ans.replace("'", ''), 'en');
-    if (ok) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(true); }, 1500);
+    else if (ex.kind === 'name') sayEn(ex.sayIt, ex.ans.replace("'", ''));
+    if (ok || ses.chk) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(ok); }, ok ? 1500 : 900);
   },
   find(i) {
     const ex = cur(), st = ex.st; if (st.hit[i]) return;
@@ -366,14 +370,60 @@ Object.assign(X, {
       const ok = st.typed.join('') === target.join(''), me = ses, at = ses.i; beep(ok);
       if (ok) { render(); ++spk; if (canLuo(ex.it)) sayLuo(ex.it); ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(st.miss === 0); }, 1300); return; }
       st.miss++; st.bad = true; render();
+      if (ses.chk) { ses.timer = setTimeout(() => { if (ses === me && ses.i === at) exDone(false); }, 900); return; }
       ses.timer = setTimeout(() => { if (ses !== me || ses.i !== at) return; let k2 = 0; while (k2 < target.length && st.typed[k2] === target[k2]) k2++; st.typed = st.typed.slice(0, k2); st.bad = false; if (st.miss >= 3) st.show = true; render(); }, 800);
       return;
     }
     render();
   },
   kbDel() { const st = cur().st; if (!st.show) { st.typed.pop(); render(); } },
-  tfSay() { const ex = cur(); ++spk; if (ex.lang === 'en') tts(ex.text, 'en'); else if (S.set.sw && V.sw) tts(ex.text, 'sw'); },
+  tfSay() { const ex = cur(); ++spk; if (ex.lang === 'en') sayEn(ex.sayIt, ex.text); else sayLuo(ex.sayIt); },
   tf(v) { const ex = cur(), st = ex.st; if (st.sel !== null) return; st.sel = v; const ok = v === ex.truth, me = ses, at = ses.i; beep(ok); render();
-    if (ex.lang === 'en') { ++spk; tts(ex.text, 'en'); }
-    if (ok) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(true); }, 1300); }
+    if (ex.lang === 'en') { ++spk; sayEn(ex.sayIt, ex.text); }
+    if (ok || ses.chk) ses.timer = setTimeout(() => { if (ses === me && ses.i === at && view === 'ses') exDone(ok); }, ok ? 1300 : 900); }
 });
+
+/* ================= READING BOOKS ================= */
+function bookSession(u) {
+  const its = u.ids.map(I).filter(it => it && luoOf(it)), q = [];
+  its.forEach(it => q.push(pk(it, 'n>p', its, 3, 1)));
+  q.push({t: 'book', u});
+  const sh = its.map(luoOf).filter(t => t.length <= 16).sort((a, b) => a.length - b.length)[0]; if (sh) q.push(W(sh, 'copy'));
+  return q;
+}
+EX.book = (ex, el) => {
+  const its = ex.u.ids.map(I);
+  el.innerHTML = `<div class="card"><div class="pic md">${esc(ex.u.e)}</div><div class="tt">${H(ex.u.book.luo)}</div></div>
+    <div class="story">${its.map(it => `<button onclick="spk++;sayLuo(I('${it.id}'))"><span class="bp">${esc(it.pic)}</span><span><span class="tt2">${H(luoOf(it))}</span><span class="nt2 en">${esc(it.en)}</span></span></button>`).join('')}</div>
+    ${nextBtn('exDone(true,false)')}`;
+};
+
+/* ================= READING CHECK (short, timed – like the EGRA test used in Kenyan schools) ================= */
+const CHECK_PARTS = [['letters', '🔤', 'Letters: tap the picture that starts with the letter', 60], ['words', '📖', 'Words: read the word, tap its picture', 60],
+  ['sentences', '📜', 'Sentences: read, then ✅ or ❌', 60], ['writing', '✏️', 'Writing: spell 4 words', 0]];
+function checkSession() {
+  const q = [], words = decWords(LIT_SEQ, true), Ls = shuffle(LIT_SEQ.filter(l => firstSound(l, 1).length));
+  const add = (part, list) => list.forEach(e => q.push(Object.assign(e, {part, re: true})));
+  CHECK_PARTS.forEach(([name, e, txt, secs]) => {
+    q.push({t: 'part', name, e, txt, secs});
+    if (name === 'letters') add(name, [].concat(...[0, 1].map(() => Ls.map(l => firstSound(l, 1)[0]))).filter(Boolean).slice(0, 40));
+    if (name === 'words') add(name, shuffle(words).slice(0, 40).map(it => pk(it, 'n>p', words, 3, 1)));
+    if (name === 'sentences') add(name, tfLuo(30));
+    if (name === 'writing') add(name, shuffle(words.filter(it => LG(luoOf(it)).length <= 5)).slice(0, 4).map(it => ({t: 'kb', it, keys: LIT_SEQ})));
+  });
+  return q;
+}
+function startCheck(pid) { S.cur = pid; save(); helper = false; startSession({id: null, en: 'Reading check'}, checkSession()); ses.chk = {}; ses.chkFor = pid; render(); }
+EX.part = (ex, el) => {
+  el.innerHTML = `<div class="card"><div class="pic xl">${ex.e}</div><div class="nt">${esc(ex.txt)}</div>${ex.secs ? `<div class="tt">⏱️ ${ex.secs}</div>` : ''}</div>${nextBtn('X.part()')}`;
+};
+X.part = () => { const ex = cur(); ses.partEnd = ex.secs ? Date.now() + ex.secs * 1000 : 0; clearTimeout(ses.ptimer);
+  if (ex.secs) { const me = ses; ses.ptimer = setTimeout(() => { if (ses === me && view === 'ses') { clearTimeout(ses.timer); stopSound(); skipPart(); if (ses.i >= ses.q.length) finishCheck(); else render(); } }, ex.secs * 1000); }
+  ses.i++; render(); };
+function skipPart() { const part = (ses.q[ses.i] || {}).part; ses.partEnd = 0; clearTimeout(ses.ptimer); while (ses.i < ses.q.length && ses.q[ses.i].part && ses.q[ses.i].part === part) ses.i++; }
+function finishCheck() {
+  clearTimeout(ses.ptimer); const p = S.profiles.find(x => x.id === ses.chkFor) || P(), r = {};
+  CHECK_PARTS.forEach(([n]) => r[n] = ses.chk[n] || {ok: 0, n: 0});
+  p.checks = (p.checks || []).concat([{at: Date.now(), r}]); touchDay(p); save(); beep(true); go('chkres', {pid: p.id});
+}
+const chkLine = c => CHECK_PARTS.map(([n, e]) => `${e} ${c.r[n] ? c.r[n].ok : 0}`).join(' · ');

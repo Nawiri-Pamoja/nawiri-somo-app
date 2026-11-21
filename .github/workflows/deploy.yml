@@ -27,9 +27,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Keep polished recordings between runs
+        uses: actions/cache@v4
+        with:
+          path: .cache/audio
+          key: audio-${{ hashFiles('contributions/**') }}
+          restore-keys: audio-
+
       - name: Merge helper contributions and build the app
         run: |
           set -euo pipefail
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
           pip install --quiet fonttools
           python3 build.py
           cat review/community-report.md >> "$GITHUB_STEP_SUMMARY"
